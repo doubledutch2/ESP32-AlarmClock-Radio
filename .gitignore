@@ -1,1 +1,28 @@
+# Arduino
+*.hex
+*.elf
+*.bin
+*.map
 
+# Build directories
+build/
+.build/
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+*~
+
+# Credentials (important!)
+config_local.h
+secrets.h
+
+# Test files
+test/
+*.test.ino
