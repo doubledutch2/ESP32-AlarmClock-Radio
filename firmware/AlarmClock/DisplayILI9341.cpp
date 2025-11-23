@@ -1,8 +1,13 @@
 #include "DisplayILI9341.h"
 
+DisplayILI9341::DisplayILI9341(int8_t cs, int8_t dc, int8_t rst, int8_t mosi, int8_t miso, int8_t sclk, int8_t bl)
+    : tft(cs,dc,mosi,sclk,rst,miso), backlightPin(bl),brightness(255) {}
+// Adafruit_ILI9341(int8_t _CS, int8_t _DC, int8_t _MOSI, int8_t _SCLK, int8_t _RST = -1, int8_t _MISO = -1)
+
+/*
 DisplayILI9341::DisplayILI9341(int8_t cs, int8_t dc, int8_t rst, int8_t bl)
     : tft(cs, dc, rst), backlightPin(bl), brightness(255) {}
-
+*/    
 void DisplayILI9341::begin() {
     tft.begin();
     tft.setRotation(1); // Landscape

@@ -3,8 +3,8 @@
 
 // ===== Feature Flags =====
 // Choose which display to use (comment/uncomment)
-#define USE_OLED_DISPLAY    // Use I2C OLED display
-// #define USE_TFT_DISPLAY  // Use SPI TFT display (ILI9341)
+// #define USE_OLED_DISPLAY    // Use I2C OLED display
+#define USE_TFT_DISPLAY  // Use SPI TFT display (ILI9341)
 
 // Enable/disable modules
 #define ENABLE_AUDIO     true
@@ -72,5 +72,13 @@
 // ===== Storage Settings =====
 #define MAX_STATIONS     50
 #define MAX_ALARMS       10
+
+#define BUZZER_PIN  25
+
+// Button Pins
+#define BTN_UP      3
+#define BTN_DOWN    4
+#define BTN_SELECT  5
+#define BTN_SNOOZE  6
 
 #endif

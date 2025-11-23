@@ -20,6 +20,44 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 - 2x MAX98357A I2S Amplifiers
 - Si4735 FM/AM Radio Module (optional)
 - 2x 4Ω 3W Speakers
+## PINOUT
+
+Pin Assignments ESP32
+
+0 -
+1 - VOL_POT
+2 -
+3 - — BTN_UP
+4 - — BTN_DOWN
+5 - — BTN_SELECT 
+6 - — BTN_SNOOZE
+7 - I2S_LCR
+8 - I2C_SCA
+9 - I2C_SCL
+10 - TFT_CS
+11 - TFT_MOSI
+12 - TFT_MISO
+13 - TFT_SCLK
+14 - TFT_DC
+15 - I2S_BCLK
+16 - I2S_DOUT_L
+17 - I2S_DOUT_R
+18 - Reserved
+19 - USB D- (Do not Use)
+20 - USB D+ (Do not Use)
+21 - TFT_RST
+35 
+36
+37
+38 - BTN_BRIGHT
+39 - BTN_NEXT_STATION
+40 - MODE_SWITCH
+41 - AUDIO_SWITCH
+42 - FM_RESET
+46
+47 - TFT_BL
+48 - LED Build In
+
 
 ## Software Requirements
 
@@ -30,6 +68,14 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
   - ESP32-audioI2S
   - Adafruit NeoPixel
   - SI4735 Arduino Library (optional)
+
+## Compile with new ESP32 Board
+- Connect USB cable to COM Port
+- Upload simple Blink Sketch
+- Change USB Cable to USB Port
+- Enable "USB CDC On Boot"
+- Use ESP32S3 Dev Module"
+- No button press required
 
 ## Installation
 
@@ -47,6 +93,7 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 - Partition Scheme: Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
                     Mine: 8Mb with spiffs (3mb Apps, 1.5Mb SPIFFS)
 - PSRAM: QSPI PSRAM
+         OPI PSRAM
 
 ## Documentation
 

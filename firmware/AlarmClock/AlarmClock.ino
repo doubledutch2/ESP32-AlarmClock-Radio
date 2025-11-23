@@ -4,6 +4,7 @@
  */
 
 #include <Wire.h>
+#include "Config.h"
 #include "TimeModule.h"
 #include "DisplayILI9341.h"
 #include "FMRadioModule.h"
@@ -21,23 +22,22 @@
 
 // ===== PIN DEFINITIONS =====
 // TFT Display Pins (ILI9341)
-#define TFT_CS    15
-#define TFT_DC    2
-#define TFT_RST   4
+/*
+#define TFT_CS    10
+#define TFT_DC    14
+#define TFT_RST   21
 #define TFT_BL    16  // Backlight pin
+#define TFT_MOSI  11
+#define TFT_MISO  12
+#define TFT_SCLK 
+*/
 
 // I2C Pins (for RTC DS3231 and FM Radio RDA5807)
-#define I2C_SDA   21
-#define I2C_SCL   22
+// #define I2C_SDA   21
+// #define I2C_SCL   22
 
 // Control Pins
-#define BUZZER_PIN  25
 
-// Button Pins
-#define BTN_UP      32
-#define BTN_DOWN    33
-#define BTN_SELECT  27
-#define BTN_SNOOZE  26
 
 // ===== GLOBAL OBJECTS =====
 TimeModule* timeModule = nullptr;
@@ -92,7 +92,7 @@ void setup() {
     
     // Initialize Display
     Serial.println("Initializing Display...");
-    display = new DisplayILI9341(TFT_CS, TFT_DC, TFT_RST, TFT_BL);
+    display = new DisplayILI9341(TFT_CS,    TFT_DC,    TFT_RST,    TFT_MOSI,    TFT_MISO,    TFT_SCLK,    TFT_BL);
     display->begin();
     display->setBrightness(200);
     display->clear();
