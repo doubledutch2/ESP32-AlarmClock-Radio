@@ -40,12 +40,13 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 5. Upload to ESP32-S3
 
 ## Arduino IDE Settings
-Board: ESP32S3 Dev Module
-USB CDC On Boot: Enabled
-USB Mode: Hardware CDC and JTAG
-Flash Size: 16MB
-Partition Scheme: Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
-PSRAM: QSPI PSRAM
+- Board: ESP32S3 Dev Module
+- USB CDC On Boot: Enabled
+- USB Mode: Hardware CDC and JTAG
+- Flash Size: 16MB
+- Partition Scheme: Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
+                    Mine: 8Mb with spiffs (3mb Apps, 1.5Mb SPIFFS)
+- PSRAM: QSPI PSRAM
 
 ## Documentation
 
