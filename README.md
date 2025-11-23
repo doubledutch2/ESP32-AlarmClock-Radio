@@ -39,6 +39,14 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 4. Configure TFT_eSPI User_Setup.h (see docs/SETUP.md)
 5. Upload to ESP32-S3
 
+## Arduino IDE Settings
+Board: ESP32S3 Dev Module
+USB CDC On Boot: Enabled
+USB Mode: Hardware CDC and JTAG
+Flash Size: 16MB
+Partition Scheme: Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
+PSRAM: QSPI PSRAM
+
 ## Documentation
 
 - [Wiring Guide](docs/WIRING.md)
