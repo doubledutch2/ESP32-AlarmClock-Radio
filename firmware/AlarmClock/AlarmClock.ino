@@ -11,7 +11,6 @@
 #include "StorageModule.h"
 
 // ===== WIFI CREDENTIALS =====
-// CHANGE THESE TO YOUR WIFI NETWORK
 #define WIFI_SSID "DEBEER"
 #define WIFI_PASSWORD "B@C&86j@gqW73g"
 
@@ -55,7 +54,9 @@ struct AlarmState {
     bool triggered;
     bool snoozed;
     unsigned long snoozeTime;
-} alarm;
+};
+
+AlarmState alarmState;
 
 // ===== UI STATE =====
 enum MenuState {
@@ -143,9 +144,9 @@ void setup() {
         bool savedEnabled;
         float savedFreq;
         storage->loadConfig(savedHour, savedMin, savedEnabled, savedFreq);
-        alarm.hour = savedHour;
-        alarm.minute = savedMin;
-        alarm.enabled = savedEnabled;
+        alarmState.hour = savedHour;
+        alarmState.minute = savedMin;
+        alarmState.enabled = savedEnabled;
         fmRadio->setFrequency(savedFreq);
     } else {
         Serial.println("Storage initialization failed!");
@@ -153,14 +154,14 @@ void setup() {
     }
     
     // Initialize alarm state
-    if (alarm.hour == 0 && alarm.minute == 0) {
-        alarm.hour = 7;
-        alarm.minute = 0;
+    if (alarmState.hour == 0 && alarmState.minute == 0) {
+        alarmState.hour = 7;
+        alarmState.minute = 0;
     }
-    alarm.enabled = false;
-    alarm.triggered = false;
-    alarm.snoozed = false;
-    alarm.snoozeTime = 0;
+    alarmState.enabled = false;
+    alarmState.triggered = false;
+    alarmState.snoozed = false;
+    alarmState.snoozeTime = 0;
     
     // Initialize UI state
     ui.currentMenu = MENU_MAIN;
@@ -228,7 +229,7 @@ void handleButtons() {
     buzzer->playBeep();
     
     // Handle snooze button (works in any menu when alarm is triggered)
-    if (btnSnooze && alarm.triggered) {
+    if (btnSnooze && alarmState.triggered) {
         snoozeAlarm();
         ui.needsRedraw = true;
         return;
@@ -277,7 +278,7 @@ void handleMainMenu(bool up, bool down, bool select) {
                 ui.selectedItem = 0;
                 break;
             case 3:
-                alarm.enabled = !alarm.enabled;
+                alarmState.enabled = !alarmState.enabled;
                 saveConfig();
                 break;
         }
@@ -324,16 +325,16 @@ void handleSetTimeMenu(bool up, bool down, bool select) {
 void handleSetAlarmMenu(bool up, bool down, bool select) {
     if (up) {
         if (ui.selectedItem == 0) {
-            alarm.hour = (alarm.hour + 1) % 24;
+            alarmState.hour = (alarmState.hour + 1) % 24;
         } else if (ui.selectedItem == 1) {
-            alarm.minute = (alarm.minute + 1) % 60;
+            alarmState.minute = (alarmState.minute + 1) % 60;
         }
         ui.needsRedraw = true;
     } else if (down) {
         if (ui.selectedItem == 0) {
-            alarm.hour = (alarm.hour == 0) ? 23 : alarm.hour - 1;
+            alarmState.hour = (alarmState.hour == 0) ? 23 : alarmState.hour - 1;
         } else if (ui.selectedItem == 1) {
-            alarm.minute = (alarm.minute == 0) ? 59 : alarm.minute - 1;
+            alarmState.minute = (alarmState.minute == 0) ? 59 : alarmState.minute - 1;
         }
         ui.needsRedraw = true;
     } else if (select) {
@@ -422,7 +423,7 @@ void drawMainScreen() {
     display->drawDate(80, 120, timeModule->getYear(), timeModule->getMonth(), timeModule->getDay());
     
     // Draw alarm status
-    display->drawAlarmStatus(60, 160, alarm.enabled, alarm.hour, alarm.minute);
+    display->drawAlarmStatus(60, 160, alarmState.enabled, alarmState.hour, alarmState.minute);
     
     // Draw FM frequency
     display->drawFMFrequency(100, 190, fmRadio->getFrequency());
@@ -455,7 +456,7 @@ void drawSetAlarmScreen() {
     display->drawText(70, 20, "SET ALARM", ILI9341_YELLOW, 3);
     
     char alarmStr[6];
-    sprintf(alarmStr, "%02d:%02d", alarm.hour, alarm.minute);
+    sprintf(alarmStr, "%02d:%02d", alarmState.hour, alarmState.minute);
     
     uint16_t color = (ui.selectedItem == 0) ? ILI9341_GREEN : ILI9341_WHITE;
     display->drawText(60, 100, alarmStr, color, 4);
@@ -481,7 +482,7 @@ void drawSettingsScreen() {
 
 // ===== ALARM FUNCTIONS =====
 void checkAlarm() {
-    if (!alarm.enabled || alarm.triggered) {
+    if (!alarmState.enabled || alarmState.triggered) {
         return;
     }
     
@@ -490,20 +491,20 @@ void checkAlarm() {
     uint8_t currentSec = timeModule->getSecond();
     
     // Check if snoozed alarm should trigger
-    if (alarm.snoozed && millis() >= alarm.snoozeTime) {
+    if (alarmState.snoozed && millis() >= alarmState.snoozeTime) {
         triggerAlarm();
-        alarm.snoozed = false;
+        alarmState.snoozed = false;
         return;
     }
     
     // Check regular alarm time
-    if (currentHour == alarm.hour && currentMin == alarm.minute && currentSec == 0) {
+    if (currentHour == alarmState.hour && currentMin == alarmState.minute && currentSec == 0) {
         triggerAlarm();
     }
 }
 
 void triggerAlarm() {
-    alarm.triggered = true;
+    alarmState.triggered = true;
     buzzer->playAlarm();
     display->clear();
     display->drawText(60, 100, "WAKE UP!", ILI9341_RED, 4);
@@ -511,9 +512,9 @@ void triggerAlarm() {
 }
 
 void snoozeAlarm() {
-    alarm.triggered = false;
-    alarm.snoozed = true;
-    alarm.snoozeTime = millis() + SNOOZE_DURATION;
+    alarmState.triggered = false;
+    alarmState.snoozed = true;
+    alarmState.snoozeTime = millis() + SNOOZE_DURATION;
     buzzer->stopTone();
     
     display->clear();
@@ -525,7 +526,7 @@ void snoozeAlarm() {
 // ===== UTILITY FUNCTIONS =====
 void saveConfig() {
     if (storage && storage->isReady()) {
-        storage->saveConfig(alarm.hour, alarm.minute, alarm.enabled, fmRadio->getFrequency());
+        storage->saveConfig(alarmState.hour, alarmState.minute, alarmState.enabled, fmRadio->getFrequency());
         Serial.println("Configuration saved to NVS");
     }
 }

@@ -1,6 +1,6 @@
 #include "StorageModule.h"
 
-StorageModule::StorageModule(int csPin) : sdCS(csPin), isInitialized(false), stationCount(0) {
+StorageModule::StorageModule() : isInitialized(false), stationCount(0) {
     for (int i = 0; i < MAX_STATIONS; i++) {
         stations[i].frequency = 0.0;
         stations[i].name[0] = '\0';
@@ -8,18 +8,17 @@ StorageModule::StorageModule(int csPin) : sdCS(csPin), isInitialized(false), sta
 }
 
 bool StorageModule::begin() {
-    if (!SD.begin(sdCS)) {
-        Serial.println("SD Card initialization failed!");
+    // Initialize LittleFS
+    if (!LittleFS.begin(true)) {  // true = format if mount fails
+        Serial.println("LittleFS Mount Failed");
         return false;
     }
     
-    uint8_t cardType = SD.cardType();
-    if (cardType == CARD_NONE) {
-        Serial.println("No SD card attached");
-        return false;
-    }
+    Serial.println("LittleFS mounted successfully");
     
-    Serial.println("SD Card initialized successfully");
+    // Initialize NVS Preferences
+    prefs.begin("alarmclock", false);  // false = read/write mode
+    
     isInitialized = true;
     
     // Load saved data
@@ -36,57 +35,39 @@ bool StorageModule::isReady() {
     return isInitialized;
 }
 
+// ===== NVS CONFIGURATION (fast, small data) =====
 bool StorageModule::saveConfig(uint8_t alarmHour, uint8_t alarmMin, bool alarmEnabled, float fmFreq) {
     if (!isInitialized) return false;
     
-    File file = SD.open(configFile, FILE_WRITE);
-    if (!file) {
-        Serial.println("Failed to open config file for writing");
-        return false;
-    }
+    prefs.putUChar("alarmHour", alarmHour);
+    prefs.putUChar("alarmMin", alarmMin);
+    prefs.putBool("alarmEnabled", alarmEnabled);
+    prefs.putFloat("fmFreq", fmFreq);
     
-    file.printf("%d,%d,%d,%.1f\n", alarmHour, alarmMin, alarmEnabled ? 1 : 0, fmFreq);
-    file.close();
-    
-    Serial.println("Config saved");
+    Serial.println("Config saved to NVS");
     return true;
 }
 
 bool StorageModule::loadConfig(uint8_t &alarmHour, uint8_t &alarmMin, bool &alarmEnabled, float &fmFreq) {
     if (!isInitialized) return false;
     
-    File file = SD.open(configFile, FILE_READ);
-    if (!file) {
-        Serial.println("Config file not found, using defaults");
-        alarmHour = 7;
-        alarmMin = 0;
-        alarmEnabled = false;
-        fmFreq = 98.0;
-        return false;
-    }
+    // Load with defaults if keys don't exist
+    alarmHour = prefs.getUChar("alarmHour", 7);
+    alarmMin = prefs.getUChar("alarmMin", 0);
+    alarmEnabled = prefs.getBool("alarmEnabled", false);
+    fmFreq = prefs.getFloat("fmFreq", 98.0);
     
-    String line = file.readStringUntil('\n');
-    file.close();
+    Serial.printf("Config loaded: Alarm %02d:%02d %s, FM %.1f\n", 
+                  alarmHour, alarmMin, alarmEnabled ? "ON" : "OFF", fmFreq);
     
-    int h, m, e;
-    float f;
-    if (sscanf(line.c_str(), "%d,%d,%d,%f", &h, &m, &e, &f) == 4) {
-        alarmHour = h;
-        alarmMin = m;
-        alarmEnabled = (e == 1);
-        fmFreq = f;
-        Serial.println("Config loaded");
-        return true;
-    }
-    
-    Serial.println("Failed to parse config");
-    return false;
+    return true;
 }
 
+// ===== LITTLEFS STATION STORAGE (larger data, file-based) =====
 bool StorageModule::saveStations() {
     if (!isInitialized) return false;
     
-    File file = SD.open(stationsFile, FILE_WRITE);
+    File file = LittleFS.open(stationsFile, "w");
     if (!file) {
         Serial.println("Failed to open stations file for writing");
         return false;
@@ -97,38 +78,49 @@ bool StorageModule::saveStations() {
     }
     file.close();
     
-    Serial.println("Stations saved");
+    Serial.printf("Saved %d stations to LittleFS\n", stationCount);
     return true;
 }
 
 bool StorageModule::loadStations() {
     if (!isInitialized) return false;
     
-    File file = SD.open(stationsFile, FILE_READ);
-    if (!file) {
+    if (!LittleFS.exists(stationsFile)) {
         Serial.println("Stations file not found");
+        return false;
+    }
+    
+    File file = LittleFS.open(stationsFile, "r");
+    if (!file) {
+        Serial.println("Failed to open stations file for reading");
         return false;
     }
     
     stationCount = 0;
     while (file.available() && stationCount < MAX_STATIONS) {
         String line = file.readStringUntil('\n');
+        line.trim();
+        
         int commaPos = line.indexOf(',');
         if (commaPos > 0) {
             stations[stationCount].frequency = line.substring(0, commaPos).toFloat();
-            strncpy(stations[stationCount].name, line.substring(commaPos + 1).c_str(), 31);
+            String name = line.substring(commaPos + 1);
+            strncpy(stations[stationCount].name, name.c_str(), 31);
             stations[stationCount].name[31] = '\0';
             stationCount++;
         }
     }
     file.close();
     
-    Serial.printf("Loaded %d stations\n", stationCount);
+    Serial.printf("Loaded %d stations from LittleFS\n", stationCount);
     return true;
 }
 
 bool StorageModule::addStation(float frequency, const char* name) {
-    if (stationCount >= MAX_STATIONS) return false;
+    if (stationCount >= MAX_STATIONS) {
+        Serial.println("Station list full");
+        return false;
+    }
     
     stations[stationCount].frequency = frequency;
     strncpy(stations[stationCount].name, name, 31);
@@ -141,6 +133,7 @@ bool StorageModule::addStation(float frequency, const char* name) {
 bool StorageModule::removeStation(int index) {
     if (index < 0 || index >= stationCount) return false;
     
+    // Shift stations down
     for (int i = index; i < stationCount - 1; i++) {
         stations[i] = stations[i + 1];
     }
@@ -171,4 +164,22 @@ void StorageModule::clearStations() {
         stations[i].name[0] = '\0';
     }
     saveStations();
+    Serial.println("All stations cleared");
+}
+
+void StorageModule::factoryReset() {
+    Serial.println("Performing factory reset...");
+    
+    // Clear NVS preferences
+    prefs.clear();
+    
+    // Clear stations
+    clearStations();
+    
+    // Delete stations file
+    if (LittleFS.exists(stationsFile)) {
+        LittleFS.remove(stationsFile);
+    }
+    
+    Serial.println("Factory reset complete");
 }

@@ -1,8 +1,8 @@
 #ifndef STORAGE_MODULE_H
 #define STORAGE_MODULE_H
 
-#include <SD.h>
-#include <FS.h>
+#include <Preferences.h>
+#include <LittleFS.h>
 
 #define MAX_STATIONS 20
 
@@ -13,24 +13,23 @@ struct RadioStation {
 
 class StorageModule {
 private:
-    int sdCS;
+    Preferences prefs;
     bool isInitialized;
     RadioStation stations[MAX_STATIONS];
     int stationCount;
-    const char* configFile = "/config.txt";
     const char* stationsFile = "/stations.txt";
 
 public:
-    StorageModule(int csPin);
+    StorageModule();
     
     bool begin();
     bool isReady();
     
-    // Config management
+    // Config management using NVS (Preferences)
     bool saveConfig(uint8_t alarmHour, uint8_t alarmMin, bool alarmEnabled, float fmFreq);
     bool loadConfig(uint8_t &alarmHour, uint8_t &alarmMin, bool &alarmEnabled, float &fmFreq);
     
-    // Station management
+    // Station management using LittleFS
     bool saveStations();
     bool loadStations();
     bool addStation(float frequency, const char* name);
@@ -39,6 +38,9 @@ public:
     int getStationCount();
     void setStationCount(int count);
     void clearStations();
+    
+    // Utility
+    void factoryReset();
 };
 
 #endif
