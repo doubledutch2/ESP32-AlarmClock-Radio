@@ -1,605 +1,538 @@
-#include <esp_partition.h>
-#include "config.h"
-#include "DisplayInterface.h"
-#include "WiFiModule.h"
-#include "WebServerModule.h"
-#include "AudioModule.h"
+/*
+ * ESP32 Alarm Clock Radio
+ * Complete modular alarm clock with FM radio, WiFi/NTP time, TFT display, and internal storage
+ */
+
+#include <Wire.h>
 #include "TimeModule.h"
-#include "LEDModule.h"
+#include "DisplayILI9341.h"
+#include "FMRadioModule.h"
+#include "BuzzerModule.h"
 #include "StorageModule.h"
 
-#if ENABLE_FM_RADIO
-  #include "FMRadioModule.h"
-#endif
-#include "DisplayInterface.h"
-#include "WiFiModule.h"
-#include "WebServerModule.h"
-#include "AudioModule.h"
-#include "TimeModule.h"
-#include "LEDModule.h"
-#include "StorageModule.h"
+// ===== WIFI CREDENTIALS =====
+// CHANGE THESE TO YOUR WIFI NETWORK
+#define WIFI_SSID "DEBEER"
+#define WIFI_PASSWORD "B@C&86j@gqW73g"
 
-// Choose display type based on config
-#ifdef USE_OLED_DISPLAY
-  #include "DisplayOLED.h"
-  DisplayOLED* display;
-#elif defined(USE_TFT_DISPLAY)
-  #include "DisplayTFT.h"
-  DisplayTFT* display;
-#else
-  DisplayInterface* display = nullptr;
-#endif
+// Time zone offset in seconds (e.g., GMT+0 = 0, GMT+1 = 3600, GMT-5 = -18000)
+// For UK (GMT): use 0 in winter, 3600 in summer (BST)
+#define GMT_OFFSET_SEC 0
+#define DAYLIGHT_OFFSET_SEC 3600  // Add 1 hour for daylight saving time
 
-// Module instances
-WiFiModule* wifi = nullptr;
-WebServerModule* webServer = nullptr;
-AudioModule* audio = nullptr;
+// ===== PIN DEFINITIONS =====
+// TFT Display Pins (ILI9341)
+#define TFT_CS    15
+#define TFT_DC    2
+#define TFT_RST   4
+#define TFT_BL    16  // Backlight pin
+
+// I2C Pins (for RTC DS3231 and FM Radio RDA5807)
+#define I2C_SDA   21
+#define I2C_SCL   22
+
+// Control Pins
+#define BUZZER_PIN  25
+
+// Button Pins
+#define BTN_UP      32
+#define BTN_DOWN    33
+#define BTN_SELECT  27
+#define BTN_SNOOZE  26
+
+// ===== GLOBAL OBJECTS =====
 TimeModule* timeModule = nullptr;
-LEDModule* led = nullptr;
+DisplayILI9341* display = nullptr;
+FMRadioModule* fmRadio = nullptr;
+BuzzerModule* buzzer = nullptr;
 StorageModule* storage = nullptr;
 
-#if ENABLE_FM_RADIO
-  FMRadioModule* fmRadio = nullptr;
-#endif
+// ===== ALARM STATE =====
+struct AlarmState {
+    uint8_t hour;
+    uint8_t minute;
+    bool enabled;
+    bool triggered;
+    bool snoozed;
+    unsigned long snoozeTime;
+} alarm;
 
-// Audio source control
-enum AudioSource {
-  SOURCE_INTERNET_RADIO = 0,
-  SOURCE_FM_RADIO = 1
+// ===== UI STATE =====
+enum MenuState {
+    MENU_MAIN,
+    MENU_SET_TIME,
+    MENU_SET_ALARM,
+    MENU_FM_RADIO,
+    MENU_SETTINGS
 };
 
-AudioSource currentAudioSource = SOURCE_INTERNET_RADIO;
+struct UIState {
+    MenuState currentMenu;
+    int selectedItem;
+    bool needsRedraw;
+    unsigned long lastButtonPress;
+} ui;
 
-// Default station list (will be overridden by stored stations if available)
-RadioStation defaultStations[] = {
-  {"BBC 5 Live", "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/dash/nonuk/pc_hd_abr_v2/cfs/bbc_radio_five_live.mpd"},
-  {"Veronica", "https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICAAAC.aac"},
-  {"NPO-1", "https://www.mp3streams.nl/zender/npo-radio-1/stream/1-aac-64"},
-  {"ERT Kosmos", "https://radiostreaming.ert.gr/ert-kosmos"},
-  {"Real FM", "https://realfm.live24.gr/realfm"}
-};
+// ===== CONSTANTS =====
+const unsigned long SNOOZE_DURATION = 5 * 60 * 1000;  // 5 minutes
+const unsigned long DEBOUNCE_DELAY = 200;
+const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;
 
-// Dynamic station list (loaded from storage)
-RadioStation* stationList = nullptr;
-int stationCount = 0;
-
-// Button state
-bool brightnessPressed = false;
-bool nextStationPressed = false;
-uint8_t brightnessLevel = 3;
-
-// Volume control
-int lastVolumePotValue = -1;
-
-// Forward declarations
-void playCustomStation(const char* name, const char* url);
-void handleButtons();
-void checkVolumeControl();
-void loadStationsFromStorage();
-void saveStationsToStorage();
-void loadSettingsFromStorage();
-void saveSettingsToStorage();
-String getStationsJSON();
-
+// ===== SETUP =====
 void setup() {
-  Serial.begin(9600);
-  delay(1000);
-  
-  Serial.println("\n");
-  Serial.println("====================================");
-  Serial.println("   ESP32 Internet Radio Clock");
-  Serial.println("====================================");
-  Serial.println();
-  
-  // Print memory info
-  Serial.println("=== Memory Info ===");
-  Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
-  Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
-  Serial.printf("Total PSRAM: %d bytes\n", ESP.getPsramSize());
-  Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
-  
-  // Print partition info
-  Serial.println("\n=== Partition Info ===");
-  const esp_partition_t* partition = esp_ota_get_running_partition();
-  Serial.printf("Running partition: %s\n", partition->label);
-  Serial.printf("Partition type: %d, subtype: %d\n", partition->type, partition->subtype);
-  Serial.printf("Partition offset: 0x%X\n", partition->address);
-  Serial.printf("Partition size: %d bytes (%.2f MB)\n", 
-    partition->size, 
-    partition->size / 1024.0 / 1024.0);
-  
-  Serial.println();
-  
-  // Initialize LED first for status indication
-  if (ENABLE_LED) {
-    led = new LEDModule(LED_PIN);
-    led->begin();
-    led->setColor(LEDModule::COLOR_RED, BRIGHT_DIM);
-  }
-  
-  // Initialize Storage
-  storage = new StorageModule();
-  if (!storage->begin()) {
-    Serial.println("ERROR: Storage initialization failed!");
-    if (led) led->setColor(LEDModule::COLOR_RED, BRIGHT_FULL);
-    delay(5000);
-  } else {
-    Serial.println("Storage initialized successfully");
+    Serial.begin(115200);
+    Serial.println("\n\nESP32 Alarm Clock Radio Starting...");
     
-    // Print storage info
-    Serial.printf("Total space: %d KB\n", storage->getTotalSpace() / 1024);
-    Serial.printf("Used space: %d KB\n", storage->getUsedSpace() / 1024);
-    Serial.printf("Free space: %d KB\n", storage->getFreeSpace() / 1024);
-    Serial.println();
-  }
-  
-  // Load WiFi credentials from storage
-  WiFiCredentials wifiCreds;
-  bool hasStoredWifi = false;
-  
-  if (storage && storage->loadWiFiCredentials(wifiCreds)) {
-    Serial.println("Using stored WiFi credentials");
-    wifi = new WiFiModule(wifiCreds.ssid, wifiCreds.password);
-    hasStoredWifi = true;
-  } else {
-    Serial.println("Using default WiFi credentials");
-    wifi = new WiFiModule(WIFI_SSID, WIFI_PASSWORD);
+    // Initialize Button Pins
+    pinMode(BTN_UP, INPUT_PULLUP);
+    pinMode(BTN_DOWN, INPUT_PULLUP);
+    pinMode(BTN_SELECT, INPUT_PULLUP);
+    pinMode(BTN_SNOOZE, INPUT_PULLUP);
     
-    // Save default credentials to storage for next time
-    if (storage) {
-      storage->saveWiFiCredentials(WIFI_SSID, WIFI_PASSWORD);
-      Serial.println("Saved default WiFi credentials to storage");
-    }
-  }
-  
-  // Connect to WiFi
-  if (!wifi->connect()) {
-    Serial.println("ERROR: WiFi connection failed!");
-    if (led) led->setColor(LEDModule::COLOR_RED, BRIGHT_FULL);
-  } else {
-    if (led) led->setColor(LEDModule::COLOR_GREEN, BRIGHT_DIM);
-  }
-  
-  // Initialize Web Server
-  if (ENABLE_WEB && wifi->isConnected()) {
-    webServer = new WebServerModule();
-    webServer->setPlayCallback(playCustomStation);
-    webServer->begin(MDNS_NAME);
+    // Initialize Display
+    Serial.println("Initializing Display...");
+    display = new DisplayILI9341(TFT_CS, TFT_DC, TFT_RST, TFT_BL);
+    display->begin();
+    display->setBrightness(200);
+    display->clear();
+    display->drawText(10, 10, "Alarm Clock Starting...", ILI9341_WHITE, 2);
     
-    Serial.printf("Access web interface at:\n");
-    Serial.printf("  http://%s.local\n", MDNS_NAME);
-    Serial.printf("  http://%s\n", wifi->getLocalIP().c_str());
-    Serial.println();
-  }
-  
-  // Initialize Time Module
-  int gmtOffset = GMT_OFFSET;
-  int dstOffset = DST_OFFSET;
-  
-  if (storage && storage->loadTimezone(gmtOffset, dstOffset)) {
-    Serial.printf("Loaded timezone from storage: GMT%+d, DST=%d\n", gmtOffset, dstOffset);
-  }
-  
-  timeModule = new TimeModule(gmtOffset, dstOffset);
-  timeModule->begin();
-  
-  // Initialize Display
-  Serial.println("=== Display Init ===");
-  
-#ifdef USE_OLED_DISPLAY
-  Serial.println("Initializing OLED display...");
-  display = new DisplayOLED(I2C_SDA, I2C_SCL);
-#elif defined(USE_TFT_DISPLAY)
-  Serial.println("Initializing TFT display...");
-  display = new DisplayTFT();  // TFT_eSPI uses pins from User_Setup.h
-#endif
-  
-  if (display) {
-    if (display->begin()) {
-      Serial.println("Display initialized successfully");
-      display->showStartupMessage("Radio Clock");
-      delay(2000);
-      
-      // Load brightness from storage
-      if (storage) {
-        brightnessLevel = storage->loadBrightness(3);
-        display->setBrightness(brightnessLevel);
-      }
+    // Initialize WiFi and Time
+    Serial.println("Initializing WiFi and NTP...");
+    display->drawText(10, 40, "Connecting WiFi...", ILI9341_YELLOW, 2);
+    timeModule = new TimeModule("pool.ntp.org", GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC);
+    if (timeModule->begin(WIFI_SSID, WIFI_PASSWORD)) {
+        Serial.println("WiFi and Time initialized successfully");
+        display->drawText(10, 40, "WiFi: OK", ILI9341_GREEN, 2);
+        display->drawText(10, 60, timeModule->getIPAddress().c_str(), ILI9341_CYAN, 1);
     } else {
-      Serial.println("ERROR: Display initialization failed!");
-    }
-  } else {
-    Serial.println("No display configured");
-  }
-  
-  Serial.println();
-  
-  // Load stations from storage or use defaults
-  loadStationsFromStorage();
-  
-  // Initialize Audio
-  if (ENABLE_AUDIO) {
-    Serial.println("=== Audio Init ===");
-    #if ENABLE_STEREO
-      Serial.println("Stereo mode: 2 channels");
-    #else
-      Serial.println("Mono mode: 1 channel");
-    #endif
-    
-    audio = new AudioModule(I2S_BCLK, I2S_LRC, I2S_DOUT_L, MAX_VOLUME);
-    audio->begin();
-    audio->setStationList(stationList, stationCount);
-    
-    // Load and set volume from storage
-    if (storage) {
-      int savedVolume = storage->loadVolume(10);
-      audio->setVolume(savedVolume);
-      Serial.printf("Loaded volume from storage: %d\n", savedVolume);
+        Serial.println("WiFi/Time initialization failed!");
+        display->drawText(10, 40, "WiFi: FAIL", ILI9341_RED, 2);
+        display->drawText(10, 60, "Check credentials", ILI9341_YELLOW, 1);
     }
     
-    // Start playing first station
-    if (stationCount > 0) {
-      audio->playStation(0);
-    }
-    
-    Serial.println();
-  }
-  
-  // Initialize FM Radio (only if enabled)
-  #if ENABLE_FM_RADIO
-  if (ENABLE_FM_RADIO) {
-    Serial.println("=== FM Radio Init ===");
-    fmRadio = new FMRadioModule(FM_RESET_PIN);
-    
+    // Initialize FM Radio
+    Serial.println("Initializing FM Radio...");
+    Wire.begin(I2C_SDA, I2C_SCL);
+    delay(100);
+    fmRadio = new FMRadioModule();
     if (fmRadio->begin()) {
-      Serial.println("FM Radio initialized");
-      fmRadio->setFM();  // Start in FM mode
-      fmRadio->setFrequency(9580);  // Default: 95.8 MHz
-      fmRadio->enableRDS();
-      
-      pinMode(AUDIO_SWITCH_PIN, OUTPUT);
-      digitalWrite(AUDIO_SWITCH_PIN, LOW);  // Start with internet radio
-      currentAudioSource = SOURCE_INTERNET_RADIO;
+        Serial.println("FM Radio initialized successfully");
+        display->drawText(10, 90, "FM Radio: OK", ILI9341_GREEN, 2);
     } else {
-      Serial.println("FM Radio initialization failed");
+        Serial.println("FM Radio initialization failed!");
+        display->drawText(10, 90, "FM Radio: FAIL", ILI9341_RED, 2);
     }
     
-    Serial.println();
-  }
-  #else
-    Serial.println("=== FM Radio Disabled ===");
-    Serial.println("Set ENABLE_FM_RADIO to true in config.h when module arrives");
-    Serial.println();
-  #endif
-  
-  // Setup button pins
-  pinMode(BRIGHTNESS_PIN, INPUT);
-  pinMode(NEXT_STATION_PIN, INPUT);
-  pinMode(VOL_PIN, INPUT);
-  
-  Serial.println("====================================");
-  Serial.println("   Setup Complete - System Ready");
-  Serial.println("====================================");
-  Serial.println();
-  
-  if (led) led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
+    // Initialize Buzzer
+    Serial.println("Initializing Buzzer...");
+    buzzer = new BuzzerModule(BUZZER_PIN);
+    buzzer->begin();
+    buzzer->playBeep();
+    display->drawText(10, 120, "Buzzer: OK", ILI9341_GREEN, 2);
+    
+    // Initialize Storage (NVS + LittleFS)
+    Serial.println("Initializing Internal Storage...");
+    storage = new StorageModule();
+    if (storage->begin()) {
+        Serial.println("Storage initialized successfully");
+        display->drawText(10, 150, "Storage: OK", ILI9341_GREEN, 2);
+        
+        // Load saved configuration
+        uint8_t savedHour, savedMin;
+        bool savedEnabled;
+        float savedFreq;
+        storage->loadConfig(savedHour, savedMin, savedEnabled, savedFreq);
+        alarm.hour = savedHour;
+        alarm.minute = savedMin;
+        alarm.enabled = savedEnabled;
+        fmRadio->setFrequency(savedFreq);
+    } else {
+        Serial.println("Storage initialization failed!");
+        display->drawText(10, 150, "Storage: FAIL", ILI9341_RED, 2);
+    }
+    
+    // Initialize alarm state
+    if (alarm.hour == 0 && alarm.minute == 0) {
+        alarm.hour = 7;
+        alarm.minute = 0;
+    }
+    alarm.enabled = false;
+    alarm.triggered = false;
+    alarm.snoozed = false;
+    alarm.snoozeTime = 0;
+    
+    // Initialize UI state
+    ui.currentMenu = MENU_MAIN;
+    ui.selectedItem = 0;
+    ui.needsRedraw = true;
+    ui.lastButtonPress = 0;
+    
+    delay(2000);
+    display->clear();
+    
+    Serial.println("Setup complete!");
 }
 
+// ===== MAIN LOOP =====
 void loop() {
-  // Check WiFi connection
-  if (wifi) {
-    wifi->checkConnection();
-  }
-  
-  // Handle web requests
-  if (webServer) {
-    webServer->handleClient();
-  }
-  
-  // Update time
-  if (timeModule) {
-    timeModule->loop();
-  }
-  
-  // Update display based on current mode
-  if (display && timeModule) {
-    #if ENABLE_FM_RADIO
-    if (currentAudioSource == SOURCE_INTERNET_RADIO) {
-    #else
-    // FM Radio disabled, always show internet radio or clock
-    if (true) {
-    #endif
-      // Check if we're actively playing or in clock mode
-      if (audio && audio->getCurrentStationName() != "Unknown") {
-        // Internet radio is playing - show station info
-        display->setMode(MODE_INTERNET_RADIO);
-        display->showInternetRadio(
-          audio->getCurrentStationName().c_str(),
-          nullptr,  // TODO: Get metadata from audio stream
-          nullptr
-        );
-      } else {
-        // No station playing - show clock
-        display->setMode(MODE_CLOCK);
-        display->drawClock(
-          timeModule->getHours(), 
-          timeModule->getMinutes(), 
-          timeModule->getSeconds()
-        );
-      }
-    #if ENABLE_FM_RADIO
-    } else if (currentAudioSource == SOURCE_FM_RADIO && fmRadio) {
-      // FM radio is active - show FM info
-      display->setMode(MODE_FM_RADIO);
-      display->showFMRadio(
-        fmRadio->getFrequencyString().c_str(),
-        fmRadio->getRDSStationName(),
-        fmRadio->getRDSText()
-      );
-    #endif
-    } else {
-      // Fallback to clock mode
-      display->setMode(MODE_CLOCK);
-      display->drawClock(
-        timeModule->getHours(), 
-        timeModule->getMinutes(), 
-        timeModule->getSeconds()
-      );
+    static unsigned long lastUpdate = 0;
+    static unsigned long lastWiFiCheck = 0;
+    unsigned long now = millis();
+    
+    // Check WiFi connection periodically (every 30 seconds)
+    if (now - lastWiFiCheck >= 30000) {
+        if (!timeModule->isWiFiConnected()) {
+            Serial.println("WiFi disconnected, attempting reconnect...");
+            timeModule->reconnectWiFi();
+        }
+        lastWiFiCheck = now;
     }
     
-    // Show small status info
-    int vol = audio ? audio->getCurrentVolume() : 0;
-    display->drawInfo(vol, brightnessLevel);
-    display->update();
-  }
-  
-  // Audio loop
-  if (audio) {
-    audio->loop();
-  }
-  
-  // FM Radio loop (check for RDS updates) - only if enabled
-  #if ENABLE_FM_RADIO
-  if (fmRadio && currentAudioSource == SOURCE_FM_RADIO) {
-    if (fmRadio->checkRDS()) {
-      // RDS data updated, display will refresh automatically
-      Serial.printf("RDS: %s - %s\n", 
-        fmRadio->getRDSStationName(), 
-        fmRadio->getRDSText()
-      );
-    }
-  }
-  #endif
-  
-  // Handle buttons
-  handleButtons();
-  
-  // Handle volume control
-  checkVolumeControl();
-  
-  delay(1);
-}
-
-// Callback for web interface to play custom station
-void playCustomStation(const char* name, const char* url) {
-  Serial.println("\n=== Playing Custom Station ===");
-  Serial.printf("Name: %s\n", name);
-  Serial.printf("URL: %s\n", url);
-  
-  if (audio) {
-    audio->playCustom(name, url);
+    // Handle button input
+    handleButtons();
     
-    // Optionally save this as a new preset
-    if (storage && stationCount < MAX_STATIONS) {
-      // Find if station already exists
-      bool exists = false;
-      for (int i = 0; i < stationCount; i++) {
-        if (strcmp(stationList[i].url.c_str(), url) == 0) {
-          exists = true;
-          break;
-        }
-      }
-      
-      // Add new station if it doesn't exist
-      if (!exists) {
-        storage->saveStation(stationCount, name, url);
-        stationCount++;
-        storage->setStationCount(stationCount);
-        
-        // Reload station list
-        loadStationsFromStorage();
-        if (audio) {
-          audio->setStationList(stationList, stationCount);
-        }
-        
-        Serial.println("Station saved to presets");
-      }
+    // Update display periodically
+    if (now - lastUpdate >= DISPLAY_UPDATE_INTERVAL || ui.needsRedraw) {
+        updateDisplay();
+        lastUpdate = now;
+        ui.needsRedraw = false;
     }
-  }
+    
+    // Check alarm
+    checkAlarm();
+    
+    delay(50);
 }
 
+// ===== BUTTON HANDLING =====
 void handleButtons() {
-  // Brightness button
-  int brightnessButton = digitalRead(BRIGHTNESS_PIN);
-  
-  if (brightnessButton == HIGH && !brightnessPressed) {
-    brightnessPressed = true;
-    brightnessLevel = (brightnessLevel + 1) % 6;
+    unsigned long now = millis();
     
-    if (display) {
-      display->setBrightness(brightnessLevel);
+    // Debounce check
+    if (now - ui.lastButtonPress < DEBOUNCE_DELAY) {
+        return;
     }
     
-    // Save brightness to storage
-    if (storage) {
-      storage->saveBrightness(brightnessLevel);
+    // Read buttons (active LOW)
+    bool btnUp = !digitalRead(BTN_UP);
+    bool btnDown = !digitalRead(BTN_DOWN);
+    bool btnSelect = !digitalRead(BTN_SELECT);
+    bool btnSnooze = !digitalRead(BTN_SNOOZE);
+    
+    if (!btnUp && !btnDown && !btnSelect && !btnSnooze) {
+        return;  // No button pressed
     }
     
-    Serial.printf("Brightness changed to: %d\n", brightnessLevel);
+    ui.lastButtonPress = now;
+    buzzer->playBeep();
     
-  } else if (brightnessButton == LOW) {
-    brightnessPressed = false;
-  }
-  
-  // Next station button
-  int nextButton = digitalRead(NEXT_STATION_PIN);
-  
-  if (nextButton == HIGH && !nextStationPressed) {
-    nextStationPressed = true;
-    
-    if (audio) {
-      audio->nextStation();
-      Serial.printf("Playing: %s\n", audio->getCurrentStationName().c_str());
+    // Handle snooze button (works in any menu when alarm is triggered)
+    if (btnSnooze && alarm.triggered) {
+        snoozeAlarm();
+        ui.needsRedraw = true;
+        return;
     }
     
-  } else if (nextButton == LOW) {
-    nextStationPressed = false;
-  }
+    // Menu-specific button handling
+    switch (ui.currentMenu) {
+        case MENU_MAIN:
+            handleMainMenu(btnUp, btnDown, btnSelect);
+            break;
+        case MENU_SET_TIME:
+            handleSetTimeMenu(btnUp, btnDown, btnSelect);
+            break;
+        case MENU_SET_ALARM:
+            handleSetAlarmMenu(btnUp, btnDown, btnSelect);
+            break;
+        case MENU_FM_RADIO:
+            handleFMRadioMenu(btnUp, btnDown, btnSelect);
+            break;
+        case MENU_SETTINGS:
+            handleSettingsMenu(btnUp, btnDown, btnSelect);
+            break;
+    }
 }
 
-void checkVolumeControl() {
-  if (!audio) return;
-  
-  int potValue = analogRead(VOL_PIN);
-  
-  // Only update if change is significant (reduce noise/jitter)
-  if (lastVolumePotValue == -1 || abs(potValue - lastVolumePotValue) > 40) {
-    lastVolumePotValue = potValue;
-    
-    int newVolume = map(potValue, 0, 4095, 0, MAX_VOLUME);
-    int currentVolume = audio->getCurrentVolume();
-    
-    if (abs(newVolume - currentVolume) >= 1) {
-      audio->setVolume(newVolume);
-      
-      // Save volume to storage (but not too frequently)
-      static unsigned long lastVolumeSave = 0;
-      if (millis() - lastVolumeSave > 2000) {  // Save at most every 2 seconds
-        if (storage) {
-          storage->saveVolume(newVolume);
+// ===== MAIN MENU =====
+void handleMainMenu(bool up, bool down, bool select) {
+    if (up) {
+        ui.selectedItem = (ui.selectedItem - 1 + 4) % 4;
+        ui.needsRedraw = true;
+    } else if (down) {
+        ui.selectedItem = (ui.selectedItem + 1) % 4;
+        ui.needsRedraw = true;
+    } else if (select) {
+        switch (ui.selectedItem) {
+            case 0:
+                ui.currentMenu = MENU_SET_TIME;
+                ui.selectedItem = 0;
+                break;
+            case 1:
+                ui.currentMenu = MENU_SET_ALARM;
+                ui.selectedItem = 0;
+                break;
+            case 2:
+                ui.currentMenu = MENU_FM_RADIO;
+                ui.selectedItem = 0;
+                break;
+            case 3:
+                alarm.enabled = !alarm.enabled;
+                saveConfig();
+                break;
         }
-        lastVolumeSave = millis();
-      }
+        ui.needsRedraw = true;
     }
-  }
 }
 
-void loadStationsFromStorage() {
-  Serial.println("=== Loading Stations ===");
-  
-  if (!storage) {
-    // Use default stations
-    stationCount = sizeof(defaultStations) / sizeof(RadioStation);
-    stationList = defaultStations;
-    Serial.printf("Using %d default stations\n", stationCount);
-    return;
-  }
-  
-  int storedCount = storage->getStationCount();
-  
-  if (storedCount > 0) {
-    // Allocate memory for stored stations
-    stationList = new RadioStation[storedCount];
-    stationCount = 0;
+// ===== SET TIME MENU =====
+void handleSetTimeMenu(bool up, bool down, bool select) {
+    static uint8_t editHour = 12, editMin = 0;
     
-    // Load each station
-    for (int i = 0; i < storedCount; i++) {
-      StoredStation stored;
-      if (storage->loadStation(i, stored)) {
-        stationList[stationCount].name = String(stored.name);
-        stationList[stationCount].url = String(stored.url);
-        stationCount++;
-        Serial.printf("Loaded station %d: %s\n", i, stored.name);
-      }
+    if (ui.selectedItem == 0) {
+        editHour = timeModule->getHour();
+        editMin = timeModule->getMinute();
     }
     
-    Serial.printf("Loaded %d stations from storage\n", stationCount);
-  } else {
-    // First time setup - save default stations to storage
-    Serial.println("No stored stations found, saving defaults...");
-    
-    int defaultCount = sizeof(defaultStations) / sizeof(RadioStation);
-    for (int i = 0; i < defaultCount; i++) {
-      storage->saveStation(i, 
-        defaultStations[i].name.c_str(), 
-        defaultStations[i].url.c_str()
-      );
+    if (up) {
+        if (ui.selectedItem == 0) {
+            editHour = (editHour + 1) % 24;
+        } else if (ui.selectedItem == 1) {
+            editMin = (editMin + 1) % 60;
+        }
+        ui.needsRedraw = true;
+    } else if (down) {
+        if (ui.selectedItem == 0) {
+            editHour = (editHour == 0) ? 23 : editHour - 1;
+        } else if (ui.selectedItem == 1) {
+            editMin = (editMin == 0) ? 59 : editMin - 1;
+        }
+        ui.needsRedraw = true;
+    } else if (select) {
+        if (ui.selectedItem < 1) {
+            ui.selectedItem++;
+        } else {
+            timeModule->setTime(editHour, editMin, 0);
+            ui.currentMenu = MENU_MAIN;
+            ui.selectedItem = 0;
+        }
+        ui.needsRedraw = true;
     }
-    storage->setStationCount(defaultCount);
+}
+
+// ===== SET ALARM MENU =====
+void handleSetAlarmMenu(bool up, bool down, bool select) {
+    if (up) {
+        if (ui.selectedItem == 0) {
+            alarm.hour = (alarm.hour + 1) % 24;
+        } else if (ui.selectedItem == 1) {
+            alarm.minute = (alarm.minute + 1) % 60;
+        }
+        ui.needsRedraw = true;
+    } else if (down) {
+        if (ui.selectedItem == 0) {
+            alarm.hour = (alarm.hour == 0) ? 23 : alarm.hour - 1;
+        } else if (ui.selectedItem == 1) {
+            alarm.minute = (alarm.minute == 0) ? 59 : alarm.minute - 1;
+        }
+        ui.needsRedraw = true;
+    } else if (select) {
+        if (ui.selectedItem < 1) {
+            ui.selectedItem++;
+        } else {
+            saveConfig();
+            ui.currentMenu = MENU_MAIN;
+            ui.selectedItem = 0;
+        }
+        ui.needsRedraw = true;
+    }
+}
+
+// ===== FM RADIO MENU =====
+void handleFMRadioMenu(bool up, bool down, bool select) {
+    if (up) {
+        if (ui.selectedItem == 0) {
+            float freq = fmRadio->getFrequency();
+            freq += 0.1;
+            if (freq > 108.0) freq = 87.0;
+            fmRadio->setFrequency(freq);
+        } else if (ui.selectedItem == 1) {
+            fmRadio->seekUp();
+        }
+        ui.needsRedraw = true;
+    } else if (down) {
+        if (ui.selectedItem == 0) {
+            float freq = fmRadio->getFrequency();
+            freq -= 0.1;
+            if (freq < 87.0) freq = 108.0;
+            fmRadio->setFrequency(freq);
+        } else if (ui.selectedItem == 1) {
+            fmRadio->seekDown();
+        }
+        ui.needsRedraw = true;
+    } else if (select) {
+        if (ui.selectedItem == 0) {
+            ui.selectedItem = 1;
+        } else {
+            saveConfig();
+            ui.currentMenu = MENU_MAIN;
+            ui.selectedItem = 0;
+        }
+        ui.needsRedraw = true;
+    }
+}
+
+// ===== SETTINGS MENU =====
+void handleSettingsMenu(bool up, bool down, bool select) {
+    if (select) {
+        ui.currentMenu = MENU_MAIN;
+        ui.selectedItem = 0;
+        ui.needsRedraw = true;
+    }
+}
+
+// ===== DISPLAY UPDATE =====
+void updateDisplay() {
+    display->clear();
     
-    // Use default stations
-    stationList = defaultStations;
-    stationCount = defaultCount;
+    switch (ui.currentMenu) {
+        case MENU_MAIN:
+            drawMainScreen();
+            break;
+        case MENU_SET_TIME:
+            drawSetTimeScreen();
+            break;
+        case MENU_SET_ALARM:
+            drawSetAlarmScreen();
+            break;
+        case MENU_FM_RADIO:
+            drawFMRadioScreen();
+            break;
+        case MENU_SETTINGS:
+            drawSettingsScreen();
+            break;
+    }
+}
+
+void drawMainScreen() {
+    // Draw current time (large)
+    display->drawTime(60, 60, timeModule->getHour(), timeModule->getMinute(), timeModule->getSecond());
     
-    Serial.printf("Saved and using %d default stations\n", defaultCount);
-  }
-  
-  Serial.println();
+    // Draw date
+    display->drawDate(80, 120, timeModule->getYear(), timeModule->getMonth(), timeModule->getDay());
+    
+    // Draw alarm status
+    display->drawAlarmStatus(60, 160, alarm.enabled, alarm.hour, alarm.minute);
+    
+    // Draw FM frequency
+    display->drawFMFrequency(100, 190, fmRadio->getFrequency());
+    
+    // Draw WiFi status
+    if (timeModule->isWiFiConnected()) {
+        display->drawText(5, 5, "WiFi OK", ILI9341_GREEN, 1);
+    } else {
+        display->drawText(5, 5, "WiFi OFF", ILI9341_RED, 1);
+    }
+    
+    // Draw menu at bottom
+    display->drawText(10, 220, "UP/DN:Menu SEL:Choose", ILI9341_CYAN, 1);
 }
 
-void saveStationsToStorage() {
-  if (!storage || !stationList) {
-    return;
-  }
-  
-  Serial.println("=== Saving Stations ===");
-  
-  for (int i = 0; i < stationCount; i++) {
-    storage->saveStation(i, 
-      stationList[i].name.c_str(), 
-      stationList[i].url.c_str()
-    );
-  }
-  
-  storage->setStationCount(stationCount);
-  Serial.printf("Saved %d stations to storage\n", stationCount);
+void drawSetTimeScreen() {
+    display->drawText(80, 20, "SET TIME", ILI9341_YELLOW, 3);
+    
+    char timeStr[6];
+    sprintf(timeStr, "%02d:%02d", timeModule->getHour(), timeModule->getMinute());
+    
+    uint16_t color = (ui.selectedItem == 0) ? ILI9341_GREEN : ILI9341_WHITE;
+    display->drawText(60, 100, timeStr, color, 4);
+    
+    display->drawText(10, 180, "UP/DN:Change SEL:Save", ILI9341_CYAN, 1);
+    display->drawText(10, 200, "Note: Syncs with NTP", ILI9341_YELLOW, 1);
 }
 
-// Helper function to get stations as JSON for web interface
-String getStationsJSON() {
-  String json = "{\"stations\":[";
-  
-  for (int i = 0; i < stationCount; i++) {
-    if (i > 0) json += ",";
-    json += "{\"name\":\"" + stationList[i].name + "\",";
-    json += "\"url\":\"" + stationList[i].url + "\"}";
-  }
-  
-  json += "]}";
-  return json;
+void drawSetAlarmScreen() {
+    display->drawText(70, 20, "SET ALARM", ILI9341_YELLOW, 3);
+    
+    char alarmStr[6];
+    sprintf(alarmStr, "%02d:%02d", alarm.hour, alarm.minute);
+    
+    uint16_t color = (ui.selectedItem == 0) ? ILI9341_GREEN : ILI9341_WHITE;
+    display->drawText(60, 100, alarmStr, color, 4);
+    
+    display->drawText(30, 180, "UP/DN:Change SEL:Save", ILI9341_CYAN, 1);
 }
 
-/*
- * USAGE NOTES:
- * 
- * 1. First Upload:
- *    - WiFi credentials are saved to storage
- *    - Default stations are saved to storage
- *    - Default settings (volume, brightness) are saved
- * 
- * 2. Subsequent Boots:
- *    - System loads WiFi credentials from storage
- *    - System loads stations from storage
- *    - System loads settings from storage
- * 
- * 3. Adding New Stations:
- *    - Use web interface to play a custom URL
- *    - Station is automatically saved to storage
- *    - Will be available after reboot
- * 
- * 4. Resetting to Defaults:
- *    - Uncomment this line in setup(): storage->format();
- *    - Upload and run once
- *    - Re-comment the line and upload again
- * 
- * 5. Storage Locations:
- *    - WiFi: NVS (Preferences)
- *    - Stations: NVS (Preferences)
- *    - Settings: NVS (Preferences)
- *    - WAV files: LittleFS (for future alarm sounds)
- * 
- * 6. Memory Management:
- *    - Station list uses dynamic allocation when loaded from storage
- *    - Default station list uses static allocation
- *    - All storage operations are non-blocking
- */
+void drawFMRadioScreen() {
+    display->drawText(80, 20, "FM RADIO", ILI9341_YELLOW, 3);
+    
+    char freqStr[10];
+    sprintf(freqStr, "%.1f MHz", fmRadio->getFrequency());
+    display->drawText(70, 100, freqStr, ILI9341_WHITE, 3);
+    
+    display->drawText(20, 180, "UP/DN:Tune/Seek SEL:Back", ILI9341_CYAN, 1);
+}
+
+void drawSettingsScreen() {
+    display->drawText(70, 20, "SETTINGS", ILI9341_YELLOW, 3);
+    display->drawText(50, 100, "Press SELECT", ILI9341_WHITE, 2);
+    display->drawText(70, 130, "to return", ILI9341_WHITE, 2);
+}
+
+// ===== ALARM FUNCTIONS =====
+void checkAlarm() {
+    if (!alarm.enabled || alarm.triggered) {
+        return;
+    }
+    
+    uint8_t currentHour = timeModule->getHour();
+    uint8_t currentMin = timeModule->getMinute();
+    uint8_t currentSec = timeModule->getSecond();
+    
+    // Check if snoozed alarm should trigger
+    if (alarm.snoozed && millis() >= alarm.snoozeTime) {
+        triggerAlarm();
+        alarm.snoozed = false;
+        return;
+    }
+    
+    // Check regular alarm time
+    if (currentHour == alarm.hour && currentMin == alarm.minute && currentSec == 0) {
+        triggerAlarm();
+    }
+}
+
+void triggerAlarm() {
+    alarm.triggered = true;
+    buzzer->playAlarm();
+    display->clear();
+    display->drawText(60, 100, "WAKE UP!", ILI9341_RED, 4);
+    display->drawText(40, 150, "Press SNOOZE", ILI9341_WHITE, 2);
+}
+
+void snoozeAlarm() {
+    alarm.triggered = false;
+    alarm.snoozed = true;
+    alarm.snoozeTime = millis() + SNOOZE_DURATION;
+    buzzer->stopTone();
+    
+    display->clear();
+    display->drawText(70, 100, "SNOOZED", ILI9341_YELLOW, 3);
+    display->drawText(60, 140, "5 minutes", ILI9341_WHITE, 2);
+    delay(2000);
+}
+
+// ===== UTILITY FUNCTIONS =====
+void saveConfig() {
+    if (storage && storage->isReady()) {
+        storage->saveConfig(alarm.hour, alarm.minute, alarm.enabled, fmRadio->getFrequency());
+        Serial.println("Configuration saved to NVS");
+    }
+}
+
+// ===== TEMPERATURE READING (BONUS) =====
+float getTemperature() {
+    // ESP32 internal temperature sensor (rough estimate)
+    // Note: This is not very accurate
+    return temperatureRead();
+}
