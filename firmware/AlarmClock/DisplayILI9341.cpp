@@ -128,8 +128,9 @@ void DisplayILI9341::drawSecondHand(uint8_t second, bool erase) {
 void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
     // Update digital time (only if changed)
     if (hour != lastHour || minute != lastMinute) {
+        Serial.println("Redraw Digital Clock");
         // Clear old time area
-        tft.fillRect(10, 60, 140, 40, ILI9341_BLACK);
+        tft.fillRect(10, 60, 145, 40, ILI9341_BLACK);
         
         // Draw new time
         char timeStr[6];
@@ -137,16 +138,15 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
         tft.setCursor(10, 60);
         tft.setTextColor(ILI9341_WHITE);
         tft.setTextSize(5);
-        tft.print(timeStr);
-        
-//        lastHour = hour;
-//        lastMinute = minute;
+        tft.print(timeStr);        
     }
+
+    /*
     
     // Update seconds separately (smaller)
     if (second != lastSecond) {
         return;
-        
+
         // Clear old seconds
         tft.fillRect(130, 85, 20, 15, ILI9341_BLACK);
         
@@ -158,9 +158,9 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
         tft.setTextSize(2);
         tft.print(secStr);
         
-//        lastSecond = second;
     }
-    
+    */
+
     // Update analog clock
     // Erase old hands
     if (lastSecond != 255) {
