@@ -7,10 +7,12 @@ bool FMRadioModule::begin() {
     radio.setup();
     radio.setVolume(8);
     radio.setFrequency(9800); // 98.0 MHz (frequency in 10kHz units)
-    
-    isInitialized = true;
-    currentFrequency = 98.0;
-    return true;
+
+    if (radio.checkI2C(rdaAddresses)) {
+        isInitialized = true;
+        currentFrequency = 98.0;
+    }
+    return isInitialized;
 }
 
 void FMRadioModule::setFrequency(float freq) {

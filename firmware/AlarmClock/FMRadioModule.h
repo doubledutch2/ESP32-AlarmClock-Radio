@@ -7,7 +7,8 @@ class FMRadioModule {
 private:
     RDA5807 radio;
     bool isInitialized;
-    float currentFrequency;
+    float currentFrequency=0;
+    uint8_t rdaAddresses[2] = {0, 0};
 
 public:
     FMRadioModule();

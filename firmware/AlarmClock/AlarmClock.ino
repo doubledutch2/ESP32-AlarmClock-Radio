@@ -4,12 +4,12 @@
  */
 
 #include <Wire.h>
-#include "Config.h"
 #include "TimeModule.h"
 #include "DisplayILI9341.h"
 #include "FMRadioModule.h"
 #include "BuzzerModule.h"
 #include "StorageModule.h"
+#include "Config.h"
 
 // ===== WIFI CREDENTIALS =====
 #define WIFI_SSID "DEBEER"
@@ -20,24 +20,6 @@
 #define GMT_OFFSET_SEC 0
 #define DAYLIGHT_OFFSET_SEC 3600  // Add 1 hour for daylight saving time
 
-// ===== PIN DEFINITIONS =====
-// TFT Display Pins (ILI9341)
-/*
-#define TFT_CS    10
-#define TFT_DC    14
-#define TFT_RST   21
-#define TFT_BL    16  // Backlight pin
-#define TFT_MOSI  11
-#define TFT_MISO  12
-#define TFT_SCLK 
-*/
-
-// I2C Pins (for RTC DS3231 and FM Radio RDA5807)
-// #define I2C_SDA   21
-// #define I2C_SCL   22
-
-// Control Pins
-
 
 // ===== GLOBAL OBJECTS =====
 TimeModule* timeModule = nullptr;
@@ -45,6 +27,8 @@ DisplayILI9341* display = nullptr;
 FMRadioModule* fmRadio = nullptr;
 BuzzerModule* buzzer = nullptr;
 StorageModule* storage = nullptr;
+
+bool    radioConnected = false;
 
 // ===== ALARM STATE =====
 struct AlarmState {
@@ -92,7 +76,7 @@ void setup() {
     
     // Initialize Display
     Serial.println("Initializing Display...");
-    display = new DisplayILI9341(TFT_CS,    TFT_DC,    TFT_RST,    TFT_MOSI,    TFT_MISO,    TFT_SCLK,    TFT_BL);
+    display = new DisplayILI9341(TFT_CS, TFT_DC, TFT_RST, TFT_MOSI, TFT_SCLK, TFT_MISO, TFT_BL);
     display->begin();
     display->setBrightness(200);
     display->clear();
@@ -118,6 +102,7 @@ void setup() {
     delay(100);
     fmRadio = new FMRadioModule();
     if (fmRadio->begin()) {
+        radioConnected = true;
         Serial.println("FM Radio initialized successfully");
         display->drawText(10, 90, "FM Radio: OK", ILI9341_GREEN, 2);
     } else {
@@ -171,6 +156,7 @@ void setup() {
     
     delay(2000);
     display->clear();
+    display->drawClockFace();
     
     Serial.println("Setup complete!");
 }
@@ -282,6 +268,9 @@ void handleMainMenu(bool up, bool down, bool select) {
                 saveConfig();
                 break;
         }
+        if (ui.currentMenu != MENU_MAIN) {
+            display->resetCache(); // Force full redraw when entering menu
+        }
         ui.needsRedraw = true;
     }
 }
@@ -316,6 +305,8 @@ void handleSetTimeMenu(bool up, bool down, bool select) {
             timeModule->setTime(editHour, editMin, 0);
             ui.currentMenu = MENU_MAIN;
             ui.selectedItem = 0;
+            display->clear();
+            display->resetCache(); // Force full redraw including clock face
         }
         ui.needsRedraw = true;
     }
@@ -344,6 +335,8 @@ void handleSetAlarmMenu(bool up, bool down, bool select) {
             saveConfig();
             ui.currentMenu = MENU_MAIN;
             ui.selectedItem = 0;
+            display->clear();
+            display->resetCache(); // Force full redraw including clock face
         }
         ui.needsRedraw = true;
     }
@@ -378,6 +371,8 @@ void handleFMRadioMenu(bool up, bool down, bool select) {
             saveConfig();
             ui.currentMenu = MENU_MAIN;
             ui.selectedItem = 0;
+            display->clear();
+            display->resetCache(); // Force full redraw including clock face
         }
         ui.needsRedraw = true;
     }
@@ -388,65 +383,65 @@ void handleSettingsMenu(bool up, bool down, bool select) {
     if (select) {
         ui.currentMenu = MENU_MAIN;
         ui.selectedItem = 0;
+        display->clear();
+        display->resetCache(); // Force full redraw including clock face
         ui.needsRedraw = true;
     }
 }
 
 // ===== DISPLAY UPDATE =====
 void updateDisplay() {
-    display->clear();
-    
     switch (ui.currentMenu) {
         case MENU_MAIN:
             drawMainScreen();
             break;
         case MENU_SET_TIME:
+            display->clear();
             drawSetTimeScreen();
             break;
         case MENU_SET_ALARM:
+            display->clear();
             drawSetAlarmScreen();
             break;
         case MENU_FM_RADIO:
+            display->clear();
             drawFMRadioScreen();
             break;
         case MENU_SETTINGS:
+            display->clear();
             drawSettingsScreen();
             break;
     }
 }
 
 void drawMainScreen() {
-    // Draw current time (large)
-    display->drawTime(60, 60, timeModule->getHour(), timeModule->getMinute(), timeModule->getSecond());
+    // Use smart update functions - only redraws what changed
+    display->updateTime(timeModule->getHour(), timeModule->getMinute(), timeModule->getSecond());
+    display->updateDate(timeModule->getYear(), timeModule->getMonth(), timeModule->getDay());
+    display->updateAlarmStatus(alarmState.enabled, alarmState.hour, alarmState.minute);
+    display->updateFMFrequency(fmRadio->getFrequency());
+    display->updateWiFiStatus(timeModule->isWiFiConnected());
     
-    // Draw date
-    display->drawDate(80, 120, timeModule->getYear(), timeModule->getMonth(), timeModule->getDay());
-    
-    // Draw alarm status
-    display->drawAlarmStatus(60, 160, alarmState.enabled, alarmState.hour, alarmState.minute);
-    
-    // Draw FM frequency
-    display->drawFMFrequency(100, 190, fmRadio->getFrequency());
-    
-    // Draw WiFi status
-    if (timeModule->isWiFiConnected()) {
-        display->drawText(5, 5, "WiFi OK", ILI9341_GREEN, 1);
-    } else {
-        display->drawText(5, 5, "WiFi OFF", ILI9341_RED, 1);
+    // Draw menu at bottom (static, only draw if needed)
+    static bool menuDrawn = false;
+    if (!menuDrawn) {
+        display->drawText(10, 220, "UP/DN:Menu SEL:Choose", ILI9341_CYAN, 1);
+        menuDrawn = true;
     }
-    
-    // Draw menu at bottom
-    display->drawText(10, 220, "UP/DN:Menu SEL:Choose", ILI9341_CYAN, 1);
 }
 
 void drawSetTimeScreen() {
+    Serial.println("41");
     display->drawText(80, 20, "SET TIME", ILI9341_YELLOW, 3);
     
     char timeStr[6];
+    Serial.println("42");
     sprintf(timeStr, "%02d:%02d", timeModule->getHour(), timeModule->getMinute());
     
     uint16_t color = (ui.selectedItem == 0) ? ILI9341_GREEN : ILI9341_WHITE;
+        Serial.println("43");
     display->drawText(60, 100, timeStr, color, 4);
+        Serial.println("44");
     
     display->drawText(10, 180, "UP/DN:Change SEL:Save", ILI9341_CYAN, 1);
     display->drawText(10, 200, "Note: Syncs with NTP", ILI9341_YELLOW, 1);
