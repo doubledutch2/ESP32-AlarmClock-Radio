@@ -10,7 +10,7 @@
 #define ENABLE_AUDIO     true
 #define ENABLE_LED       true
 #define ENABLE_WEB       true
-#define ENABLE_FM_RADIO  false  // *** SET TO true WHEN FM MODULE ARRIVES ***
+#define ENABLE_FM_RADIO  true  // Set to true now that we're using FM
 
 // Audio Configuration
 #define ENABLE_STEREO    true   // true = 2 speakers, false = 1 speaker
@@ -18,7 +18,7 @@
 // ===== Pin Definitions for ESP32-S3-DevKitC-1 =====
 // *** LOCKED - DO NOT CHANGE THESE PINS ***
 
-// I2C pins (Shared by OLED and Si4735)
+// I2C pins (Shared by OLED and RDA5807)
 #define I2C_SDA          8
 #define I2C_SCL          9
 
@@ -53,6 +53,15 @@ uint8_t rdaAddresses[] = {0x10, 0x11, 0};
   #define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
 #endif
 
+// Buzzer and Button Pins
+#define BUZZER_PIN  25
+
+// Button Pins for alarm clock interface
+#define BTN_UP      3
+#define BTN_DOWN    4
+#define BTN_SELECT  5
+#define BTN_SNOOZE  6
+
 // *** END OF LOCKED PINS ***
 
 // ===== WiFi Settings =====
@@ -67,6 +76,10 @@ uint8_t rdaAddresses[] = {0x10, 0x11, 0};
 #define GMT_OFFSET       0   // GMT offset in hours
 #define DST_OFFSET       0   // DST offset in hours
 
+// NEW: Time settings in seconds (required by TimeModule)
+#define GMT_OFFSET_SEC       0        // GMT offset in seconds (0 = GMT)
+#define DAYLIGHT_OFFSET_SEC  3600     // DST offset in seconds (3600 = +1 hour for BST)
+
 // ===== LED Settings =====
 #define BRIGHT_FULL      250
 #define BRIGHT_DIM       5
@@ -74,13 +87,5 @@ uint8_t rdaAddresses[] = {0x10, 0x11, 0};
 // ===== Storage Settings =====
 #define MAX_STATIONS     50
 #define MAX_ALARMS       10
-
-#define BUZZER_PIN  25
-
-// Button Pins
-#define BTN_UP      3
-#define BTN_DOWN    4
-#define BTN_SELECT  5
-#define BTN_SNOOZE  6
 
 #endif

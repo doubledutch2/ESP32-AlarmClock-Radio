@@ -128,7 +128,7 @@ void DisplayILI9341::drawSecondHand(uint8_t second, bool erase) {
 void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
     // Update digital time (only if changed)
     if (hour != lastHour || minute != lastMinute) {
-        Serial.println("Redraw Digital Clock");
+        // Serial.println("Redraw Digital Clock");
         // Clear old time area
         tft.fillRect(10, 60, 145, 40, ILI9341_BLACK);
         
