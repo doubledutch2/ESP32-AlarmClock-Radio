@@ -1,123 +1,232 @@
-// ==================== DisplayOLED.cpp ====================
-/*
 #include "DisplayOLED.h"
-#include "config.h"
+#include <math.h>
 
-DisplayOLED::DisplayOLED(uint8_t sdaPin, uint8_t sclPin) {
-  Wire.begin(sdaPin, sclPin);
-  display = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-  brightnessLevel = 3;
-}
-
-DisplayOLED::~DisplayOLED() {
-  delete display;
+DisplayOLED::DisplayOLED(int sda, int scl) 
+    : display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET),
+      sdaPin(sda), sclPin(scl), currentMode(MODE_CLOCK),
+      brightness(128), initialized(false) {
 }
 
 bool DisplayOLED::begin() {
-  if (!display->begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println("SSD1306 allocation failed");
-    return false;
-  }
-  clear();
-  update();
-  return true;
+    Wire.begin(sdaPin, sclPin);
+    
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println("OLED: Failed to initialize");
+        return false;
+    }
+    
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.display();
+    
+    initialized = true;
+    Serial.println("OLED: Initialized successfully");
+    return true;
 }
 
 void DisplayOLED::clear() {
-  display->clearDisplay();
+    if (!initialized) return;
+    display.clearDisplay();
 }
 
 void DisplayOLED::update() {
-  display->display();
+    if (!initialized) return;
+    display.display();
+}
+
+void DisplayOLED::setMode(DisplayMode mode) {
+    currentMode = mode;
+    clear();
+}
+
+DisplayMode DisplayOLED::getMode() {
+    return currentMode;
 }
 
 void DisplayOLED::setBrightness(uint8_t level) {
-  brightnessLevel = level;
-  uint8_t levels[] = {0x00, 0x10, 0x20, 0x40, 0x60, 0x80};
-  if (level < 6) {
-    display->ssd1306_command(SSD1306_SETCONTRAST);
-    display->ssd1306_command(levels[level]);
-    update();
-  }
+    brightness = level;
+    if (initialized) {
+        display.ssd1306_command(SSD1306_SETCONTRAST);
+        display.ssd1306_command(level);
+    }
 }
 
-void DisplayOLED::drawClock(int hours, int minutes, int seconds) {
-  clear();
-  
-  // Draw clock face
-  display->drawCircle(CLOCK_CENTER_X, CLOCK_CENTER_Y, CLOCK_RADIUS, SSD1306_WHITE);
-  display->drawCircle(CLOCK_CENTER_X, CLOCK_CENTER_Y, CLOCK_RADIUS - 1, SSD1306_WHITE);
-  
-  // Draw hour markers
-  for (int i = 0; i < 12; i++) {
-    float angle = (i * 30 - 90) * PI / 180.0;
-    int x1 = CLOCK_CENTER_X + (CLOCK_RADIUS - 4) * cos(angle);
-    int y1 = CLOCK_CENTER_Y + (CLOCK_RADIUS - 4) * sin(angle);
-    int x2 = CLOCK_CENTER_X + (CLOCK_RADIUS - 1) * cos(angle);
-    int y2 = CLOCK_CENTER_Y + (CLOCK_RADIUS - 1) * sin(angle);
+uint8_t DisplayOLED::getBrightness() {
+    return brightness;
+}
+
+void DisplayOLED::drawClock(uint8_t hour, uint8_t minute, uint8_t second) {
+    if (!initialized) return;
     
-    if (i % 3 == 0) {
-      display->drawLine(x1, y1, x2, y2, SSD1306_WHITE);
+    clear();
+    
+    if (currentMode == MODE_CLOCK) {
+        // Draw analog clock on left, digital on right
+        drawClockAnalog(hour, minute, second);
+        drawClockDigital(hour, minute, second);
     } else {
-      display->drawPixel(x2, y2, SSD1306_WHITE);
+        drawClockDigital(hour, minute, second);
     }
-  }
-  
-  // Calculate hand angles
-  float secondAngle = (seconds * 6 - 90) * PI / 180.0;
-  float minuteAngle = (minutes * 6 + seconds * 0.1 - 90) * PI / 180.0;
-  float hourAngle = (hours * 30 + minutes * 0.5 - 90) * PI / 180.0;
-  
-  // Draw hands
-  int hourX = CLOCK_CENTER_X + (CLOCK_RADIUS - 14) * cos(hourAngle);
-  int hourY = CLOCK_CENTER_Y + (CLOCK_RADIUS - 14) * sin(hourAngle);
-  display->drawLine(CLOCK_CENTER_X, CLOCK_CENTER_Y, hourX, hourY, SSD1306_WHITE);
-  display->drawLine(CLOCK_CENTER_X + 1, CLOCK_CENTER_Y, hourX + 1, hourY, SSD1306_WHITE);
-  
-  int minuteX = CLOCK_CENTER_X + (CLOCK_RADIUS - 6) * cos(minuteAngle);
-  int minuteY = CLOCK_CENTER_Y + (CLOCK_RADIUS - 6) * sin(minuteAngle);
-  display->drawLine(CLOCK_CENTER_X, CLOCK_CENTER_Y, minuteX, minuteY, SSD1306_WHITE);
-  display->drawLine(CLOCK_CENTER_X + 1, CLOCK_CENTER_Y, minuteX + 1, minuteY, SSD1306_WHITE);
-  
-  int secondX = CLOCK_CENTER_X + (CLOCK_RADIUS - 2) * cos(secondAngle);
-  int secondY = CLOCK_CENTER_Y + (CLOCK_RADIUS - 2) * sin(secondAngle);
-  display->drawLine(CLOCK_CENTER_X, CLOCK_CENTER_Y, secondX, secondY, SSD1306_WHITE);
-  
-  display->fillCircle(CLOCK_CENTER_X, CLOCK_CENTER_Y, 2, SSD1306_WHITE);
-  
-  // Digital time
-  display->setTextSize(1);
-  display->setTextColor(SSD1306_WHITE);
-  display->setCursor(70, 56);
-  if (hours < 10) display->print("0");
-  display->print(hours);
-  display->print(":");
-  if (minutes < 10) display->print("0");
-  display->print(minutes);
-  display->print(":");
-  if (seconds < 10) display->print("0");
-  display->print(seconds);
+    
+    update();
+}
+
+void DisplayOLED::drawClockAnalog(uint8_t hour, uint8_t minute, uint8_t second) {
+    int centerX = 32;
+    int centerY = 32;
+    int radius = 28;
+    
+    // Draw clock circle
+    display.drawCircle(centerX, centerY, radius, SSD1306_WHITE);
+    
+    // Draw hour markers
+    for (int i = 0; i < 12; i++) {
+        float angle = (i * 30 - 90) * PI / 180.0;
+        int x1 = centerX + (radius - 4) * cos(angle);
+        int y1 = centerY + (radius - 4) * sin(angle);
+        int x2 = centerX + (radius - 2) * cos(angle);
+        int y2 = centerY + (radius - 2) * sin(angle);
+        display.drawLine(x1, y1, x2, y2, SSD1306_WHITE);
+    }
+    
+    // Draw hour hand
+    float hourAngle = ((hour % 12) * 30 + minute * 0.5 - 90) * PI / 180.0;
+    int hourX = centerX + (radius - 12) * cos(hourAngle);
+    int hourY = centerY + (radius - 12) * sin(hourAngle);
+    display.drawLine(centerX, centerY, hourX, hourY, SSD1306_WHITE);
+    
+    // Draw minute hand
+    float minAngle = (minute * 6 - 90) * PI / 180.0;
+    int minX = centerX + (radius - 6) * cos(minAngle);
+    int minY = centerY + (radius - 6) * sin(minAngle);
+    display.drawLine(centerX, centerY, minX, minY, SSD1306_WHITE);
+    
+    // Draw center dot
+    display.fillCircle(centerX, centerY, 2, SSD1306_WHITE);
+}
+
+void DisplayOLED::drawClockDigital(uint8_t hour, uint8_t minute, uint8_t second) {
+    char timeStr[9];
+    sprintf(timeStr, "%02d:%02d:%02d", hour, minute, second);
+    
+    display.setTextSize(2);
+    display.setCursor(64, 24);
+    display.print(timeStr);
+}
+
+void DisplayOLED::drawDate(uint16_t year, uint8_t month, uint8_t day) {
+    if (!initialized) return;
+    
+    char dateStr[11];
+    sprintf(dateStr, "%04d-%02d-%02d", year, month, day);
+    
+    display.setTextSize(1);
+    display.setCursor(64, 45);
+    display.print(dateStr);
+}
+
+void DisplayOLED::showInternetRadio(const char* stationName, const char* artist, const char* title) {
+    if (!initialized) return;
+    
+    clear();
+    
+    display.setTextSize(1);
+    
+    // Station name at top
+    display.setCursor(0, 0);
+    display.print("Internet Radio");
+    
+    display.setCursor(0, 12);
+    display.setTextSize(2);
+    display.print(stationName);
+    
+    // Artist and title
+    if (artist && strlen(artist) > 0) {
+        display.setTextSize(1);
+        display.setCursor(0, 40);
+        display.print(artist);
+    }
+    
+    if (title && strlen(title) > 0) {
+        display.setCursor(0, 52);
+        display.print(title);
+    }
+    
+    update();
+}
+
+void DisplayOLED::showFMRadio(const char* frequency, const char* rdsStation, const char* rdsText) {
+    if (!initialized) return;
+    
+    clear();
+    
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("FM Radio");
+    
+    // Frequency
+    display.setTextSize(3);
+    display.setCursor(0, 16);
+    display.print(frequency);
+    
+    // RDS info
+    if (rdsStation && strlen(rdsStation) > 0) {
+        display.setTextSize(1);
+        display.setCursor(0, 48);
+        display.print(rdsStation);
+    }
+    
+    if (rdsText && strlen(rdsText) > 0) {
+        display.setCursor(0, 56);
+        display.print(rdsText);
+    }
+    
+    update();
 }
 
 void DisplayOLED::drawInfo(int volume, int brightness) {
-  display->setTextSize(1);
-  display->setTextColor(SSD1306_WHITE);
-  
-  display->setCursor(70, 20);
-  display->print("BL:");
-  display->print(brightness);
-  
-  display->setCursor(70, 40);
-  display->print("Vol:");
-  display->print(volume);
+    if (!initialized) return;
+    
+    char info[20];
+    sprintf(info, "V:%d B:%d", volume, brightness);
+    
+    display.setTextSize(1);
+    display.setCursor(0, 56);
+    display.print(info);
 }
 
 void DisplayOLED::showStartupMessage(const char* message) {
-  clear();
-  display->setTextSize(1);
-  display->setTextColor(SSD1306_WHITE);
-  display->setCursor(20, 28);
-  display->println(message);
-  update();
+    if (!initialized) return;
+    
+    clear();
+    
+    display.setTextSize(2);
+    display.setCursor(10, 24);
+    display.print(message);
+    
+    update();
+    delay(2000);
 }
-*/
+
+void DisplayOLED::showError(const char* message) {
+    if (!initialized) return;
+    
+    clear();
+    
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print("ERROR:");
+    
+    display.setCursor(0, 16);
+    display.print(message);
+    
+    update();
+}
+
+void DisplayOLED::drawText(int16_t x, int16_t y, const char* text, uint16_t color, uint8_t size) {
+    if (!initialized) return;
+    
+    display.setTextSize(size);
+    display.setCursor(x, y);
+    display.print(text);
+}
