@@ -1,37 +1,71 @@
-// ==================== LEDModule.cpp ====================
 #include "LEDModule.h"
 
-// Define static color constants
-const RGB LEDModule::COLOR_OFF = {0, 0, 0};
-const RGB LEDModule::COLOR_RED = {255, 0, 0};
-const RGB LEDModule::COLOR_GREEN = {0, 255, 0};
-const RGB LEDModule::COLOR_BLUE = {0, 0, 255};
-const RGB LEDModule::COLOR_YELLOW = {255, 255, 0};
-const RGB LEDModule::COLOR_MAGENTA = {255, 0, 255};
-
-LEDModule::LEDModule(uint8_t pin, uint8_t numLeds) {
-  led = new Adafruit_NeoPixel(numLeds, pin, NEO_GRB + NEO_KHZ800);
-  brightness = 250;
-}
-
-LEDModule::~LEDModule() {
-  delete led;
+LEDModule::LEDModule(uint8_t pin) 
+    : pixel(1, pin, NEO_GRB + NEO_KHZ800), ledPin(pin), brightness(255), currentColor(COLOR_OFF) {
 }
 
 void LEDModule::begin() {
-  led->begin();
-  led->show();
-  Serial.println("LED module initialized");
+    pixel.begin();
+    pixel.setBrightness(brightness);
+    pixel.show(); // Initialize all pixels to 'off'
 }
 
-void LEDModule::setColor(const RGB& color, uint8_t bright) {
-  brightness = bright;
-  led->setPixelColor(0, led->Color(color.r, color.g, color.b));
-  led->setBrightness(brightness);
-  led->show();
+void LEDModule::setColor(uint32_t color, uint8_t brightness) {
+    this->brightness = brightness;
+    this->currentColor = color;
+    pixel.setBrightness(brightness);
+    pixel.setPixelColor(0, color);
+    pixel.show();
+}
+
+void LEDModule::setRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
+    uint32_t color = pixel.Color(r, g, b);
+    setColor(color, brightness);
+}
+
+void LEDModule::setBrightness(uint8_t brightness) {
+    this->brightness = brightness;
+    pixel.setBrightness(brightness);
+    pixel.setPixelColor(0, currentColor);
+    pixel.show();
 }
 
 void LEDModule::off() {
-  setColor(COLOR_OFF, 0);
+    setColor(COLOR_OFF, 0);
 }
 
+void LEDModule::pulse(uint32_t color, int duration) {
+    int steps = 50;
+    int delayTime = duration / (steps * 2);
+    
+    // Fade in
+    for (int i = 0; i <= steps; i++) {
+        uint8_t b = (brightness * i) / steps;
+        pixel.setBrightness(b);
+        pixel.setPixelColor(0, color);
+        pixel.show();
+        delay(delayTime);
+    }
+    
+    // Fade out
+    for (int i = steps; i >= 0; i--) {
+        uint8_t b = (brightness * i) / steps;
+        pixel.setBrightness(b);
+        pixel.setPixelColor(0, color);
+        pixel.show();
+        delay(delayTime);
+    }
+    
+    // Restore original state
+    pixel.setBrightness(brightness);
+    pixel.setPixelColor(0, currentColor);
+    pixel.show();
+}
+
+uint32_t LEDModule::getCurrentColor() {
+    return currentColor;
+}
+
+uint8_t LEDModule::getBrightness() {
+    return brightness;
+}

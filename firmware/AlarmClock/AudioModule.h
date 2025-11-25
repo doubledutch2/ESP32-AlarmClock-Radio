@@ -1,45 +1,48 @@
-// ==================== AudioModule.h ====================
 #ifndef AUDIO_MODULE_H
 #define AUDIO_MODULE_H
 
-// Include SD libraries BEFORE Audio.h to use ESP32 SD library
-#include <SD.h>
-#include <FS.h>
-#include <SPI.h>
-#include "Audio.h"
+#include <Arduino.h>
+#include <Audio.h>
+#include <string>
 
 struct RadioStation {
-  String name;
-  String url;
+    String name;
+    String url;
 };
 
 class AudioModule {
 private:
-  Audio* audio;
-  RadioStation* stationList;
-  uint8_t stationCount;
-  int currentIndex;
-  int volume;
-  int maxVolume;
-  
+    Audio audio;
+    RadioStation* stations;
+    int stationCount;
+    int currentStation;
+    int currentVolume;
+    int maxVolume;
+    String currentStationName;
+    bool isPlaying;
+
 public:
-  AudioModule(uint8_t bclk, uint8_t lrc, uint8_t dout, int maxVol = 25);
-  ~AudioModule();
-  
-  void begin();
-  void loop();
-  void setVolume(int vol);
-  void playStation(int index);
-  void playCustom(const char* name, const char* url);
-  void nextStation();
-  void previousStation();
-  int getCurrentVolume() { return volume; }
-  String getCurrentStationName();
-  
-  void setStationList(RadioStation* stations, uint8_t count);
-  RadioStation* getStationList() { return stationList; }
-  uint8_t getStationCount() { return stationCount; }
+    AudioModule(int bclkPin, int lrcPin, int doutPin, int maxVol = 21);
+    
+    void begin();
+    void loop();
+    
+    void setStationList(RadioStation* stationList, int count);
+    void playStation(int index);
+    void nextStation();
+    void previousStation();
+    void playCustom(const char* name, const char* url);
+    void stop();
+    
+    void setVolume(int volume);
+    int getCurrentVolume();
+    int getMaxVolume();
+    
+    String getCurrentStationName();
+    int getCurrentStationIndex();
+    int getStationCount();
+    
+    bool getIsPlaying();
 };
 
 #endif
-

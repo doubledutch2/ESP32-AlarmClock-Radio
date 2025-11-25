@@ -4,30 +4,26 @@
 #include <WebServer.h>
 #include <ESPmDNS.h>
 
-// Forward declaration
-struct RadioStation;
+// Callback type for playing custom stations
+typedef void (*PlayCallback)(const char* name, const char* url);
 
 class WebServerModule {
 private:
-  WebServer* server;
-  void handleRoot();
-  void handlePlay();
-  void handleStations();
-  
-  // Callback function pointer
-  typedef void (*PlayCallback)(const char* name, const char* url);
-  PlayCallback playCallback;
-  
+    WebServer* server;
+    PlayCallback playCallback;
+    
+    void handleRoot();
+    void handlePlay();
+    void handleNotFound();
+    String getHTML();
+
 public:
-  WebServerModule();
-  ~WebServerModule();
-  
-  bool begin(const char* mdnsName);
-  void handleClient();
-  void setPlayCallback(PlayCallback callback);
-  
-  // Make instance static so it can be used in server callbacks
-  static WebServerModule* instance;
+    WebServerModule();
+    ~WebServerModule();
+    
+    void begin(const char* mdnsName = "alarmclock");
+    void handleClient();
+    void setPlayCallback(PlayCallback callback);
 };
 
 #endif

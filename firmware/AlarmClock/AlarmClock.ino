@@ -1,6 +1,6 @@
 /*
- * ESP32 Alarm Clock Radio
- * Simplified working version
+ * ESP32 Alarm Clock Radio - Complete Version
+ * With Internet Radio, FM Radio, Web Interface, and Alarm Clock
  */
 
 #include "Config.h"
@@ -9,6 +9,10 @@
 #include "FMRadioModule.h"
 #include "BuzzerModule.h"
 #include "StorageModule.h"
+#include "WiFiModule.h"
+#include "AudioModule.h"
+#include "WebServerModule.h"
+#include "LEDModule.h"
 
 // Module instances
 DisplayILI9341* display = nullptr;
@@ -16,6 +20,22 @@ TimeModule* timeModule = nullptr;
 FMRadioModule* fmRadio = nullptr;
 BuzzerModule* buzzer = nullptr;
 StorageModule* storage = nullptr;
+WiFiModule* wifi = nullptr;
+AudioModule* audio = nullptr;
+WebServerModule* webServer = nullptr;
+LEDModule* led = nullptr;
+
+// Default stations
+RadioStation defaultStations[] = {
+  {"BBC 5 Live", "https://stream.live.vc.bbcmedia.co.uk/bbc_radio_five_live"},
+  {"Veronica", "https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICAAAC.aac"},
+  {"NPO Radio 1", "https://icecast.omroep.nl/radio1-bb-mp3"},
+  {"ERT Kosmos", "https://radiostreaming.ert.gr/ert-kosmos"},
+  {"Real FM", "https://realfm.live24.gr/realfm"}
+};
+
+RadioStation* stationList = nullptr;
+int stationCount = 0;
 
 // ===== ALARM STATE =====
 struct AlarmState {
@@ -33,6 +53,7 @@ enum MenuState {
     MENU_SET_TIME,
     MENU_SET_ALARM,
     MENU_FM_RADIO,
+    MENU_STATIONS,
     MENU_SETTINGS
 };
 
@@ -43,6 +64,10 @@ struct UIState {
     unsigned long lastButtonPress;
 } ui;
 
+// Button state
+uint8_t brightnessLevel = 3;
+int lastVolumePotValue = -1;
+
 // Constants
 const unsigned long SNOOZE_DURATION = 5 * 60 * 1000;
 const unsigned long DEBOUNCE_DELAY = 200;
@@ -50,21 +75,26 @@ const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;
 
 // Forward declarations
 void handleButtons();
+void checkVolumeControl();
 void updateDisplay();
 void drawMainScreen();
 void drawSetTimeScreen();
 void drawSetAlarmScreen();
 void drawFMRadioScreen();
+void drawStationsScreen();
 void drawSettingsScreen();
 void handleMainMenu(bool up, bool down, bool select);
 void handleSetTimeMenu(bool up, bool down, bool select);
 void handleSetAlarmMenu(bool up, bool down, bool select);
 void handleFMRadioMenu(bool up, bool down, bool select);
+void handleStationsMenu(bool up, bool down, bool select);
 void handleSettingsMenu(bool up, bool down, bool select);
 void checkAlarm();
 void triggerAlarm();
 void snoozeAlarm();
 void saveConfig();
+void loadStationsFromStorage();
+void playCustomStation(const char* name, const char* url);
 
 void setup() {
   Serial.begin(115200);
@@ -74,11 +104,21 @@ void setup() {
   Serial.println("   ESP32 Alarm Clock Radio");
   Serial.println("====================================\n");
   
+  // Initialize LED first
+  if (ENABLE_LED) {
+    led = new LEDModule(LED_PIN);
+    led->begin();
+    led->setColor(LEDModule::COLOR_RED, BRIGHT_DIM);
+  }
+  
   // Initialize button pins
   pinMode(BTN_UP, INPUT_PULLUP);
   pinMode(BTN_DOWN, INPUT_PULLUP);
   pinMode(BTN_SELECT, INPUT_PULLUP);
   pinMode(BTN_SNOOZE, INPUT_PULLUP);
+  pinMode(BRIGHTNESS_PIN, INPUT);
+  pinMode(NEXT_STATION_PIN, INPUT);
+  pinMode(VOL_PIN, INPUT);
   
   // Initialize Display
   Serial.println("Initializing Display...");
@@ -93,35 +133,69 @@ void setup() {
   storage = new StorageModule();
   if (storage->begin()) {
     display->drawText(10, 40, "Storage: OK", ILI9341_GREEN, 2);
+    if (led) led->setColor(LEDModule::COLOR_YELLOW, BRIGHT_DIM);
   } else {
     display->drawText(10, 40, "Storage: FAIL", ILI9341_RED, 2);
   }
   
-  // Initialize WiFi and Time
-  Serial.println("Initializing WiFi and Time...");
+  // Initialize WiFi
+  Serial.println("Initializing WiFi...");
   display->drawText(10, 60, "Connecting WiFi...", ILI9341_YELLOW, 2);
   
+  wifi = new WiFiModule(WIFI_SSID, WIFI_PASSWORD);
+  if (wifi->connect()) {
+    display->drawText(10, 60, "WiFi: OK", ILI9341_GREEN, 2);
+    display->drawText(10, 80, wifi->getLocalIP().c_str(), ILI9341_CYAN, 1);
+    if (led) led->setColor(LEDModule::COLOR_GREEN, BRIGHT_DIM);
+  } else {
+    display->drawText(10, 60, "WiFi: FAIL", ILI9341_RED, 2);
+    if (led) led->setColor(LEDModule::COLOR_RED, BRIGHT_FULL);
+  }
+  
+  // Initialize Time Module
+  Serial.println("Initializing Time...");
   timeModule = new TimeModule("pool.ntp.org", GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC);
   if (timeModule->begin(WIFI_SSID, WIFI_PASSWORD)) {
-    Serial.println("WiFi and Time initialized");
-    display->drawText(10, 60, "WiFi: OK", ILI9341_GREEN, 2);
-    display->drawText(10, 80, timeModule->getIPAddress().c_str(), ILI9341_CYAN, 1);
+    display->drawText(10, 100, "Time: OK", ILI9341_GREEN, 2);
   } else {
-    Serial.println("WiFi/Time initialization failed!");
-    display->drawText(10, 60, "WiFi: FAIL", ILI9341_RED, 2);
+    display->drawText(10, 100, "Time: FAIL", ILI9341_RED, 2);
+  }
+  
+  // Initialize Web Server
+  if (ENABLE_WEB && wifi->isConnected()) {
+    webServer = new WebServerModule();
+    webServer->setPlayCallback(playCustomStation);
+    webServer->begin(MDNS_NAME);
+    display->drawText(10, 120, "Web: OK", ILI9341_GREEN, 2);
+    Serial.printf("Web interface: http://%s.local or http://%s\n", MDNS_NAME, wifi->getLocalIP().c_str());
+  }
+  
+  // Load stations
+  loadStationsFromStorage();
+  
+  // Initialize Audio
+  if (ENABLE_AUDIO) {
+    Serial.println("Initializing Audio...");
+    audio = new AudioModule(I2S_BCLK, I2S_LRC, I2S_DOUT_L, MAX_VOLUME);
+    audio->begin();
+    audio->setStationList(stationList, stationCount);
+    audio->setVolume(10);
+    display->drawText(10, 140, "Audio: OK", ILI9341_GREEN, 2);
   }
   
   // Initialize FM Radio
-  Serial.println("Initializing FM Radio...");
-  Wire.begin(I2C_SDA, I2C_SCL);
-  delay(100);
-  fmRadio = new FMRadioModule();
-  if (fmRadio->begin()) {
-    Serial.println("FM Radio initialized");
-    display->drawText(10, 100, "FM Radio: OK", ILI9341_GREEN, 2);
-  } else {
-    Serial.println("FM Radio initialization failed!");
-    display->drawText(10, 100, "FM Radio: FAIL", ILI9341_RED, 2);
+  if (ENABLE_FM_RADIO) {
+    Serial.println("Initializing FM Radio...");
+    Wire.begin(I2C_SDA, I2C_SCL);
+    delay(100);
+    fmRadio = new FMRadioModule();
+    if (fmRadio->begin()) {
+      Serial.println("FM Radio initialized");
+      display->drawText(10, 160, "FM Radio: OK", ILI9341_GREEN, 2);
+    } else {
+      Serial.println("FM Radio initialization failed!");
+      display->drawText(10, 160, "FM Radio: FAIL", ILI9341_RED, 2);
+    }
   }
   
   // Initialize Buzzer
@@ -129,7 +203,7 @@ void setup() {
   buzzer = new BuzzerModule(BUZZER_PIN);
   buzzer->begin();
   buzzer->playBeep();
-  display->drawText(10, 120, "Buzzer: OK", ILI9341_GREEN, 2);
+  display->drawText(10, 180, "Buzzer: OK", ILI9341_GREEN, 2);
   
   // Load alarm configuration
   if (storage && storage->isReady()) {
@@ -143,9 +217,7 @@ void setup() {
     if (fmRadio) {
       fmRadio->setFrequency(savedFreq);
     }
-    display->drawText(10, 140, "Config: Loaded", ILI9341_GREEN, 2);
   } else {
-    // Use defaults
     alarmState.hour = 7;
     alarmState.minute = 0;
     alarmState.enabled = false;
@@ -165,25 +237,28 @@ void setup() {
   display->clear();
   display->drawClockFace();
   
+  if (led) led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
   Serial.println("Setup complete!\n");
 }
 
 void loop() {
   static unsigned long lastUpdate = 0;
-  static unsigned long lastWiFiCheck = 0;
   unsigned long now = millis();
   
-  // Check WiFi connection periodically
-  if (now - lastWiFiCheck >= 30000) {
-    if (timeModule && !timeModule->isWiFiConnected()) {
-      Serial.println("WiFi disconnected, reconnecting...");
-      timeModule->reconnectWiFi();
-    }
-    lastWiFiCheck = now;
-  }
+  // Check WiFi
+  if (wifi) wifi->checkConnection();
   
-  // Handle button input
+  // Handle web requests
+  if (webServer) webServer->handleClient();
+  
+  // Audio loop
+  if (audio) audio->loop();
+  
+  // Handle buttons
   handleButtons();
+  
+  // Handle volume control
+  checkVolumeControl();
   
   // Update display periodically
   if (now - lastUpdate >= DISPLAY_UPDATE_INTERVAL || ui.needsRedraw) {
@@ -195,7 +270,7 @@ void loop() {
   // Check alarm
   checkAlarm();
   
-  delay(50);
+  delay(1);
 }
 
 void handleButtons() {
@@ -209,6 +284,27 @@ void handleButtons() {
   bool btnDown = !digitalRead(BTN_DOWN);
   bool btnSelect = !digitalRead(BTN_SELECT);
   bool btnSnooze = !digitalRead(BTN_SNOOZE);
+  
+  // Brightness button
+  static bool brightnessPressed = false;
+  int brightnessButton = digitalRead(BRIGHTNESS_PIN);
+  if (brightnessButton == HIGH && !brightnessPressed) {
+    brightnessPressed = true;
+    brightnessLevel = (brightnessLevel + 1) % 6;
+    if (display) display->setBrightness(brightnessLevel * 50);
+  } else if (brightnessButton == LOW) {
+    brightnessPressed = false;
+  }
+  
+  // Next station button
+  static bool nextStationPressed = false;
+  int nextButton = digitalRead(NEXT_STATION_PIN);
+  if (nextButton == HIGH && !nextStationPressed) {
+    nextStationPressed = true;
+    if (audio) audio->nextStation();
+  } else if (nextButton == LOW) {
+    nextStationPressed = false;
+  }
   
   if (!btnUp && !btnDown && !btnSelect && !btnSnooze) {
     return;
@@ -236,18 +332,33 @@ void handleButtons() {
     case MENU_FM_RADIO:
       handleFMRadioMenu(btnUp, btnDown, btnSelect);
       break;
+    case MENU_STATIONS:
+      handleStationsMenu(btnUp, btnDown, btnSelect);
+      break;
     case MENU_SETTINGS:
       handleSettingsMenu(btnUp, btnDown, btnSelect);
       break;
   }
 }
 
+void checkVolumeControl() {
+  if (!audio) return;
+  
+  int potValue = analogRead(VOL_PIN);
+  
+  if (lastVolumePotValue == -1 || abs(potValue - lastVolumePotValue) > 40) {
+    lastVolumePotValue = potValue;
+    int newVolume = map(potValue, 0, 4095, 0, audio->getMaxVolume());
+    audio->setVolume(newVolume);
+  }
+}
+
 void handleMainMenu(bool up, bool down, bool select) {
   if (up) {
-    ui.selectedItem = (ui.selectedItem - 1 + 4) % 4;
+    ui.selectedItem = (ui.selectedItem - 1 + 5) % 5;
     ui.needsRedraw = true;
   } else if (down) {
-    ui.selectedItem = (ui.selectedItem + 1) % 4;
+    ui.selectedItem = (ui.selectedItem + 1) % 5;
     ui.needsRedraw = true;
   } else if (select) {
     switch (ui.selectedItem) {
@@ -264,6 +375,10 @@ void handleMainMenu(bool up, bool down, bool select) {
         ui.selectedItem = 0;
         break;
       case 3:
+        ui.currentMenu = MENU_STATIONS;
+        ui.selectedItem = 0;
+        break;
+      case 4:
         alarmState.enabled = !alarmState.enabled;
         saveConfig();
         break;
@@ -301,9 +416,7 @@ void handleSetTimeMenu(bool up, bool down, bool select) {
     if (ui.selectedItem < 1) {
       ui.selectedItem++;
     } else {
-      if (timeModule) {
-        timeModule->setTime(editHour, editMin, 0);
-      }
+      if (timeModule) timeModule->setTime(editHour, editMin, 0);
       ui.currentMenu = MENU_MAIN;
       ui.selectedItem = 0;
       if (display) {
@@ -352,37 +465,47 @@ void handleFMRadioMenu(bool up, bool down, bool select) {
   if (!fmRadio) return;
   
   if (up) {
-    if (ui.selectedItem == 0) {
-      float freq = fmRadio->getFrequency();
-      freq += 0.1;
-      if (freq > 108.0) freq = 87.0;
-      fmRadio->setFrequency(freq);
-    } else if (ui.selectedItem == 1) {
-      fmRadio->seekUp();
-    }
+    float freq = fmRadio->getFrequency();
+    freq += 0.1;
+    if (freq > 108.0) freq = 87.0;
+    fmRadio->setFrequency(freq);
     ui.needsRedraw = true;
   } else if (down) {
-    if (ui.selectedItem == 0) {
-      float freq = fmRadio->getFrequency();
-      freq -= 0.1;
-      if (freq < 87.0) freq = 108.0;
-      fmRadio->setFrequency(freq);
-    } else if (ui.selectedItem == 1) {
-      fmRadio->seekDown();
-    }
+    float freq = fmRadio->getFrequency();
+    freq -= 0.1;
+    if (freq < 87.0) freq = 108.0;
+    fmRadio->setFrequency(freq);
     ui.needsRedraw = true;
   } else if (select) {
-    if (ui.selectedItem == 0) {
-      ui.selectedItem = 1;
-    } else {
-      saveConfig();
-      ui.currentMenu = MENU_MAIN;
-      ui.selectedItem = 0;
-      if (display) {
-        display->clear();
-        display->drawClockFace();
-        display->resetCache();
-      }
+    saveConfig();
+    ui.currentMenu = MENU_MAIN;
+    ui.selectedItem = 0;
+    if (display) {
+      display->clear();
+      display->drawClockFace();
+      display->resetCache();
+    }
+    ui.needsRedraw = true;
+  }
+}
+
+void handleStationsMenu(bool up, bool down, bool select) {
+  if (up) {
+    ui.selectedItem = (ui.selectedItem - 1 + stationCount) % stationCount;
+    ui.needsRedraw = true;
+  } else if (down) {
+    ui.selectedItem = (ui.selectedItem + 1) % stationCount;
+    ui.needsRedraw = true;
+  } else if (select) {
+    if (audio && ui.selectedItem < stationCount) {
+      audio->playStation(ui.selectedItem);
+    }
+    ui.currentMenu = MENU_MAIN;
+    ui.selectedItem = 0;
+    if (display) {
+      display->clear();
+      display->drawClockFace();
+      display->resetCache();
     }
     ui.needsRedraw = true;
   }
@@ -420,6 +543,10 @@ void updateDisplay() {
       display->clear();
       drawFMRadioScreen();
       break;
+    case MENU_STATIONS:
+      display->clear();
+      drawStationsScreen();
+      break;
     case MENU_SETTINGS:
       display->clear();
       drawSettingsScreen();
@@ -438,7 +565,31 @@ void drawMainScreen() {
     display->updateFMFrequency(fmRadio->getFrequency());
   }
   
-  display->updateWiFiStatus(timeModule->isWiFiConnected());
+  display->updateWiFiStatus(wifi && wifi->isConnected());
+  
+  // Show playing station
+  if (audio && audio->getIsPlaying()) {
+    static String lastStation = "";
+    String currentStation = audio->getCurrentStationName();
+    if (currentStation != lastStation) {
+      display->fillRect(10, 195, 200, 20, ILI9341_BLACK);
+      display->drawText(10, 195, currentStation.c_str(), ILI9341_YELLOW, 1);
+      lastStation = currentStation;
+    }
+  }
+  
+  // Show volume
+  if (audio) {
+    static int lastVol = -1;
+    int vol = audio->getCurrentVolume();
+    if (vol != lastVol) {
+      display->fillRect(220, 220, 90, 15, ILI9341_BLACK);
+      char volStr[20];
+      sprintf(volStr, "Vol:%d", vol);
+      display->drawText(220, 220, volStr, ILI9341_CYAN, 1);
+      lastVol = vol;
+    }
+  }
   
   static bool menuDrawn = false;
   if (!menuDrawn) {
@@ -459,7 +610,6 @@ void drawSetTimeScreen() {
   display->drawText(60, 100, timeStr, color, 4);
   
   display->drawText(10, 180, "UP/DN:Change SEL:Save", ILI9341_CYAN, 1);
-  display->drawText(10, 200, "Note: Syncs with NTP", ILI9341_YELLOW, 1);
 }
 
 void drawSetAlarmScreen() {
@@ -485,25 +635,39 @@ void drawFMRadioScreen() {
     char freqStr[12];
     sprintf(freqStr, "%.1f MHz", fmRadio->getFrequency());
     display->drawText(70, 100, freqStr, ILI9341_WHITE, 3);
-  } else {
-    display->drawText(50, 100, "Not Available", ILI9341_RED, 2);
   }
   
-  display->drawText(20, 180, "UP/DN:Tune/Seek SEL:Back", ILI9341_CYAN, 1);
+  display->drawText(20, 180, "UP/DN:Tune SEL:Back", ILI9341_CYAN, 1);
+}
+
+void drawStationsScreen() {
+  if (!display) return;
+  
+  display->drawText(60, 20, "STATIONS", ILI9341_YELLOW, 3);
+  
+  int startIdx = (ui.selectedItem / 5) * 5;
+  for (int i = 0; i < 5 && (startIdx + i) < stationCount; i++) {
+    uint16_t color = (startIdx + i == ui.selectedItem) ? ILI9341_GREEN : ILI9341_WHITE;
+    display->drawText(10, 60 + i * 25, stationList[startIdx + i].name.c_str(), color, 2);
+  }
+  
+  display->drawText(10, 200, "UP/DN:Select SEL:Play", ILI9341_CYAN, 1);
 }
 
 void drawSettingsScreen() {
   if (!display) return;
   
   display->drawText(70, 20, "SETTINGS", ILI9341_YELLOW, 3);
-  display->drawText(50, 100, "Press SELECT", ILI9341_WHITE, 2);
-  display->drawText(70, 130, "to return", ILI9341_WHITE, 2);
+  display->drawText(30, 80, "Web Interface:", ILI9341_WHITE, 2);
+  if (wifi && wifi->isConnected()) {
+    display->drawText(30, 110, wifi->getLocalIP().c_str(), ILI9341_GREEN, 2);
+  }
+  display->drawText(50, 150, "Press SELECT", ILI9341_WHITE, 2);
+  display->drawText(70, 170, "to return", ILI9341_WHITE, 2);
 }
 
 void checkAlarm() {
-  if (!alarmState.enabled || alarmState.triggered || !timeModule) {
-    return;
-  }
+  if (!alarmState.enabled || alarmState.triggered || !timeModule) return;
   
   if (alarmState.snoozed && millis() >= alarmState.snoozeTime) {
     triggerAlarm();
@@ -523,6 +687,7 @@ void checkAlarm() {
 void triggerAlarm() {
   alarmState.triggered = true;
   if (buzzer) buzzer->playAlarm();
+  if (audio && stationCount > 0) audio->playStation(0);
   if (display) {
     display->clear();
     display->drawText(60, 100, "WAKE UP!", ILI9341_RED, 4);
@@ -549,5 +714,39 @@ void saveConfig() {
     float fmFreq = fmRadio ? fmRadio->getFrequency() : 98.0;
     storage->saveConfig(alarmState.hour, alarmState.minute, alarmState.enabled, fmFreq);
     Serial.println("Configuration saved");
+  }
+}
+
+void loadStationsFromStorage() {
+  if (!storage) {
+    stationCount = sizeof(defaultStations) / sizeof(RadioStation);
+    stationList = defaultStations;
+    Serial.printf("Using %d default stations\n", stationCount);
+    return;
+  }
+  
+  stationCount = storage->getStationCount();
+  
+  if (stationCount > 0) {
+    stationList = new RadioStation[stationCount];
+    for (int i = 0; i < stationCount; i++) {
+      RadioStation* station = storage->getStation(i);
+      if (station) {
+        stationList[i].name = String(station->name);
+        stationList[i].frequency = station->frequency;
+      }
+    }
+    Serial.printf("Loaded %d stations from storage\n", stationCount);
+  } else {
+    stationCount = sizeof(defaultStations) / sizeof(RadioStation);
+    stationList = defaultStations;
+    Serial.printf("Using %d default stations\n", stationCount);
+  }
+}
+
+void playCustomStation(const char* name, const char* url) {
+  Serial.printf("Web request: Play %s - %s\n", name, url);
+  if (audio) {
+    audio->playCustom(name, url);
   }
 }
