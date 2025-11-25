@@ -2,8 +2,8 @@
 
 StorageModule::StorageModule() : isInitialized(false), stationCount(0) {
     for (int i = 0; i < MAX_STATIONS; i++) {
-        stations[i].frequency = 0.0;
-        stations[i].name[0] = '\0';
+        fmPresets[i].frequency = 0.0;
+        fmPresets[i].name[0] = '\0';
     }
 }
 
@@ -26,7 +26,7 @@ bool StorageModule::begin() {
     bool en;
     float freq;
     loadConfig(h, m, en, freq);
-    loadStations();
+    loadFMStations();
     
     return true;
 }
@@ -63,36 +63,36 @@ bool StorageModule::loadConfig(uint8_t &alarmHour, uint8_t &alarmMin, bool &alar
     return true;
 }
 
-// ===== LITTLEFS STATION STORAGE (larger data, file-based) =====
-bool StorageModule::saveStations() {
+// ===== LITTLEFS FM STATION STORAGE (larger data, file-based) =====
+bool StorageModule::saveFMStations() {
     if (!isInitialized) return false;
     
     File file = LittleFS.open(stationsFile, "w");
     if (!file) {
-        Serial.println("Failed to open stations file for writing");
+        Serial.println("Failed to open FM stations file for writing");
         return false;
     }
     
     for (int i = 0; i < stationCount; i++) {
-        file.printf("%.1f,%s\n", stations[i].frequency, stations[i].name);
+        file.printf("%.1f,%s\n", fmPresets[i].frequency, fmPresets[i].name);
     }
     file.close();
     
-    Serial.printf("Saved %d stations to LittleFS\n", stationCount);
+    Serial.printf("Saved %d FM stations to LittleFS\n", stationCount);
     return true;
 }
 
-bool StorageModule::loadStations() {
+bool StorageModule::loadFMStations() {
     if (!isInitialized) return false;
     
     if (!LittleFS.exists(stationsFile)) {
-        Serial.println("Stations file not found");
+        Serial.println("FM stations file not found");
         return false;
     }
     
     File file = LittleFS.open(stationsFile, "r");
     if (!file) {
-        Serial.println("Failed to open stations file for reading");
+        Serial.println("Failed to open FM stations file for reading");
         return false;
     }
     
@@ -103,68 +103,68 @@ bool StorageModule::loadStations() {
         
         int commaPos = line.indexOf(',');
         if (commaPos > 0) {
-            stations[stationCount].frequency = line.substring(0, commaPos).toFloat();
+            fmPresets[stationCount].frequency = line.substring(0, commaPos).toFloat();
             String name = line.substring(commaPos + 1);
-            strncpy(stations[stationCount].name, name.c_str(), 31);
-            stations[stationCount].name[31] = '\0';
+            strncpy(fmPresets[stationCount].name, name.c_str(), 31);
+            fmPresets[stationCount].name[31] = '\0';
             stationCount++;
         }
     }
     file.close();
     
-    Serial.printf("Loaded %d stations from LittleFS\n", stationCount);
+    Serial.printf("Loaded %d FM stations from LittleFS\n", stationCount);
     return true;
 }
 
-bool StorageModule::addStation(float frequency, const char* name) {
+bool StorageModule::addFMStation(float frequency, const char* name) {
     if (stationCount >= MAX_STATIONS) {
-        Serial.println("Station list full");
+        Serial.println("FM station list full");
         return false;
     }
     
-    stations[stationCount].frequency = frequency;
-    strncpy(stations[stationCount].name, name, 31);
-    stations[stationCount].name[31] = '\0';
+    fmPresets[stationCount].frequency = frequency;
+    strncpy(fmPresets[stationCount].name, name, 31);
+    fmPresets[stationCount].name[31] = '\0';
     stationCount++;
     
-    return saveStations();
+    return saveFMStations();
 }
 
-bool StorageModule::removeStation(int index) {
+bool StorageModule::removeFMStation(int index) {
     if (index < 0 || index >= stationCount) return false;
     
     // Shift stations down
     for (int i = index; i < stationCount - 1; i++) {
-        stations[i] = stations[i + 1];
+        fmPresets[i] = fmPresets[i + 1];
     }
     stationCount--;
     
-    return saveStations();
+    return saveFMStations();
 }
 
-RadioStation* StorageModule::getStation(int index) {
+FMRadioPreset* StorageModule::getFMStation(int index) {
     if (index < 0 || index >= stationCount) return nullptr;
-    return &stations[index];
+    return &fmPresets[index];
 }
 
-int StorageModule::getStationCount() {
+int StorageModule::getFMStationCount() {
     return stationCount;
 }
 
-void StorageModule::setStationCount(int count) {
+void StorageModule::setFMStationCount(int count) {
     if (count >= 0 && count <= MAX_STATIONS) {
         stationCount = count;
     }
 }
 
-void StorageModule::clearStations() {
+void StorageModule::clearFMStations() {
     stationCount = 0;
     for (int i = 0; i < MAX_STATIONS; i++) {
-        stations[i].frequency = 0.0;
-        stations[i].name[0] = '\0';
+        fmPresets[i].frequency = 0.0;
+        fmPresets[i].name[0] = '\0';
     }
-    saveStations();
-    Serial.println("All stations cleared");
+    saveFMStations();
+    Serial.println("All FM stations cleared");
 }
 
 void StorageModule::factoryReset() {
@@ -173,8 +173,8 @@ void StorageModule::factoryReset() {
     // Clear NVS preferences
     prefs.clear();
     
-    // Clear stations
-    clearStations();
+    // Clear FM stations
+    clearFMStations();
     
     // Delete stations file
     if (LittleFS.exists(stationsFile)) {

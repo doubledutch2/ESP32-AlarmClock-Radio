@@ -3,17 +3,12 @@
 
 #include <Arduino.h>
 #include <Audio.h>
-#include <string>
-
-struct RadioStation {
-    String name;
-    String url;
-};
+#include "CommonTypes.h"
 
 class AudioModule {
 private:
     Audio audio;
-    RadioStation* stations;
+    InternetRadioStation* stations;
     int stationCount;
     int currentStation;
     int currentVolume;
@@ -27,7 +22,7 @@ public:
     void begin();
     void loop();
     
-    void setStationList(RadioStation* stationList, int count);
+    void setStationList(InternetRadioStation* stationList, int count);
     void playStation(int index);
     void nextStation();
     void previousStation();
