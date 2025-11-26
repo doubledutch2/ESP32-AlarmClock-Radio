@@ -22,7 +22,7 @@
 #define I2C_SDA          8
 #define I2C_SCL          9
 
-uint8_t rdaAddresses[] = {0x10, 0x11, 0};
+// uint8_t rdaAddresses[] = {0x10, 0x11, 0};
 
 // I2S Audio pins (for Internet Radio via MAX98357A)
 // STEREO: Use two MAX98357A amplifiers

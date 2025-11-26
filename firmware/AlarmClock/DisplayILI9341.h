@@ -28,7 +28,7 @@ private:
     int16_t clockCenterY;
     int16_t clockRadius;
     
-    // void drawClockFace();
+    void drawClockFace();
     void drawHourHand(uint8_t hour, uint8_t minute, bool erase);
     void drawMinuteHand(uint8_t minute, bool erase);
     void drawSecondHand(uint8_t second, bool erase);
@@ -39,6 +39,7 @@ public:
     void begin();
     void clear();
     void setBrightness(uint8_t level);
+    uint8_t getBrightness();  // Add getter
     
     // Smart update functions (only redraw if changed)
     void updateTime(uint8_t hour, uint8_t minute, uint8_t second);
@@ -48,7 +49,6 @@ public:
     void updateWiFiStatus(bool connected);
     
     // Direct draw functions
-    void drawClockFace();
     void drawText(int16_t x, int16_t y, const char* text, uint16_t color, uint8_t size = 1);
     void drawTextWithBackground(int16_t x, int16_t y, const char* text, uint16_t fgColor, uint16_t bgColor, uint8_t size = 1);
     

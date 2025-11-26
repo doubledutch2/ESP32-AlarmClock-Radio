@@ -34,7 +34,7 @@ void DisplayILI9341::begin() {
     }
     
     clear();
-    // drawClockFace();
+    drawClockFace();
 }
 
 void DisplayILI9341::clear() {
@@ -61,6 +61,10 @@ void DisplayILI9341::setBrightness(uint8_t level) {
     if (backlightPin >= 0) {
         ledcWrite(backlightPin, brightness);
     }
+}
+
+uint8_t DisplayILI9341::getBrightness() {
+    return brightness;
 }
 
 // ===== ANALOG CLOCK FUNCTIONS =====
@@ -128,9 +132,8 @@ void DisplayILI9341::drawSecondHand(uint8_t second, bool erase) {
 void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
     // Update digital time (only if changed)
     if (hour != lastHour || minute != lastMinute) {
-        // Serial.println("Redraw Digital Clock");
         // Clear old time area
-        tft.fillRect(10, 60, 145, 40, ILI9341_BLACK);
+        tft.fillRect(10, 60, 140, 40, ILI9341_BLACK);
         
         // Draw new time
         char timeStr[6];
@@ -138,15 +141,14 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
         tft.setCursor(10, 60);
         tft.setTextColor(ILI9341_WHITE);
         tft.setTextSize(5);
-        tft.print(timeStr);        
+        tft.print(timeStr);
+        
+        lastHour = hour;
+        lastMinute = minute;
     }
-
-    /*
     
     // Update seconds separately (smaller)
     if (second != lastSecond) {
-        return;
-
         // Clear old seconds
         tft.fillRect(130, 85, 20, 15, ILI9341_BLACK);
         
@@ -158,9 +160,9 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
         tft.setTextSize(2);
         tft.print(secStr);
         
+        lastSecond = second;
     }
-    */
-
+    
     // Update analog clock
     // Erase old hands
     if (lastSecond != 255) {
@@ -177,10 +179,6 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
     drawHourHand(hour, minute, false);
     drawMinuteHand(minute, false);
     drawSecondHand(second, false);
-
-    lastSecond = second;
-    lastMinute = minute;
-    lastHour = hour;
     
     // Redraw center dot
     tft.fillCircle(clockCenterX, clockCenterY, 3, ILI9341_WHITE);
@@ -236,8 +234,7 @@ void DisplayILI9341::updateFMFrequency(float frequency) {
         tft.fillRect(10, 195, 150, 20, ILI9341_BLACK);
         
         // Draw new FM frequency
-        char freqStr[15];
-        // strcpy(freqStr,"Hello");
+        char freqStr[12];
         sprintf(freqStr, "FM: %.1f MHz", frequency);
         tft.setCursor(10, 195);
         tft.setTextColor(ILI9341_YELLOW);
