@@ -28,7 +28,6 @@ private:
     int16_t clockCenterY;
     int16_t clockRadius;
     
-    void drawClockFace();
     void drawHourHand(uint8_t hour, uint8_t minute, bool erase);
     void drawMinuteHand(uint8_t minute, bool erase);
     void drawSecondHand(uint8_t second, bool erase);
@@ -63,6 +62,7 @@ public:
     int16_t getHeight();
     
     void resetCache();
+    void drawClockFace();  // Make public so it can be called from main
 };
 
 #endif
