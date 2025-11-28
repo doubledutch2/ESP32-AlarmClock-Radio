@@ -34,7 +34,7 @@ void DisplayILI9341::begin() {
     }
     
     clear();
-    drawClockFace();
+    // drawClockFace();
 }
 
 void DisplayILI9341::clear() {
@@ -133,7 +133,7 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
     // Update digital time (only if changed)
     if (hour != lastHour || minute != lastMinute) {
         // Clear old time area
-        tft.fillRect(10, 60, 140, 40, ILI9341_BLACK);
+        tft.fillRect(10, 60, 160, 40, ILI9341_BLACK);
         
         // Draw new time
         char timeStr[6];
@@ -143,10 +143,11 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
         tft.setTextSize(5);
         tft.print(timeStr);
         
-        lastHour = hour;
-        lastMinute = minute;
+        //  lastHour = hour;
+        //  lastMinute = minute;
     }
     
+    /*
     // Update seconds separately (smaller)
     if (second != lastSecond) {
         // Clear old seconds
@@ -160,8 +161,9 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
         tft.setTextSize(2);
         tft.print(secStr);
         
-        lastSecond = second;
+        // lastSecond = second;
     }
+    */
     
     // Update analog clock
     // Erase old hands
@@ -174,6 +176,10 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
     if (lastHour != 255 && (lastHour != hour || lastMinute != minute)) {
         drawHourHand(lastHour, lastMinute, true);
     }
+
+    lastHour = hour;
+    lastMinute = minute;
+    lastSecond = second;
     
     // Draw new hands (hour first, then minute, then second)
     drawHourHand(hour, minute, false);
@@ -234,7 +240,7 @@ void DisplayILI9341::updateFMFrequency(float frequency) {
         tft.fillRect(10, 195, 150, 20, ILI9341_BLACK);
         
         // Draw new FM frequency
-        char freqStr[12];
+        char freqStr[15];
         sprintf(freqStr, "FM: %.1f MHz", frequency);
         tft.setCursor(10, 195);
         tft.setTextColor(ILI9341_YELLOW);
