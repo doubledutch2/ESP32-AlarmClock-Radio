@@ -196,7 +196,7 @@ void DisplayILI9341::updateDate(uint16_t year, uint8_t month, uint8_t day) {
         tft.fillRect(10, 110, 140, 20, ILI9341_BLACK);
         
         // Draw new date
-        char dateStr[12];
+        char dateStr[15];
         sprintf(dateStr, "%04d-%02d-%02d", year, month, day);
         tft.setCursor(10, 110);
         tft.setTextColor(ILI9341_CYAN);

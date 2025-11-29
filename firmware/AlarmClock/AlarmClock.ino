@@ -45,6 +45,16 @@ void setup() {
     Serial.println("Hardware initialization failed!");
     while(1) delay(1000);
   }
+
+  Serial.println("Going to initialize PSRAM");
+  if (psramInit()) {
+    Serial.print("PSRAM initialized. Total PSRAM size: ");
+    Serial.println(ESP.getPsramSize()); // Total size in bytes
+    Serial.print("Free PSRAM: ");
+    Serial.println(ESP.getFreePsram()); // Free memory in bytes
+  } else {
+    Serial.println("PSRAM not found or not initialized.");
+  }
   
   // Initialize menu system
   menu = new MenuSystem(
