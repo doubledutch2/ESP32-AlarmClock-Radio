@@ -39,7 +39,18 @@ void setup() {
   Serial.println("   ESP32 Alarm Clock Radio");
   Serial.println("====================================\n");
   
+  Serial.println("Going to initialize PSRAM");
+  if (psramInit()) {
+    Serial.print("PSRAM initialized. Total PSRAM size: ");
+    Serial.println(ESP.getPsramSize()); // Total size in bytes
+    Serial.print("Free PSRAM: ");
+    Serial.println(ESP.getFreePsram()); // Free memory in bytes
+  } else {
+    Serial.println("PSRAM not found or not initialized.");
+  }
+  
   // Initialize all hardware
+  Serial.println("Before hardware setup");
   hardware = new HardwareSetup();
   if (!hardware->begin()) {
     Serial.println("Hardware initialization failed!");

@@ -9,6 +9,7 @@ StorageModule::StorageModule() : isInitialized(false), stationCount(0) {
 
 bool StorageModule::begin() {
     // Initialize LittleFS
+    Serial.println("Before Init LittleFS");
     if (!LittleFS.begin(true)) {  // true = format if mount fails
         Serial.println("LittleFS Mount Failed");
         return false;
@@ -25,7 +26,9 @@ bool StorageModule::begin() {
     uint8_t h, m;
     bool en;
     float freq;
+    Serial.println("Before load Config");
     loadConfig(h, m, en, freq);
+    Serial.println("Before Load FM Stations");
     loadFMStations();
     
     return true;

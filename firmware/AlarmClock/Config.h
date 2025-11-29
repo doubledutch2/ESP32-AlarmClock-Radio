@@ -8,7 +8,7 @@
 
 // Enable/disable modules
 #define ENABLE_AUDIO     true
-#define ENABLE_LED       true
+#define ENABLE_LED       false
 #define ENABLE_WEB       true
 #define ENABLE_FM_RADIO  true  // Set to true now that we're using FM
 
