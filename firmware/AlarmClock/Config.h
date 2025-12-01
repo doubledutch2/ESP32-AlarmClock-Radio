@@ -27,8 +27,8 @@
 // I2S Audio pins (for Internet Radio via MAX98357A)
 // STEREO: Use two MAX98357A amplifiers
 #define I2S_LRC          7   // Word Select (shared for both amps)
-#define I2S_BCLK         38  // 15  // Bit Clock (shared for both amps)
-#define I2S_DOUT_L       39  // 16  // Data Out LEFT channel (to first MAX98357A)
+#define I2S_BCLK         15  // Bit Clock (shared for both amps)
+#define I2S_DOUT_L       16  // Data Out LEFT channel (to first MAX98357A)
 #define I2S_DOUT_R       17  // Data Out RIGHT channel (to second MAX98357A)
 
 // SPI pins for TFT Display (ILI9341)
