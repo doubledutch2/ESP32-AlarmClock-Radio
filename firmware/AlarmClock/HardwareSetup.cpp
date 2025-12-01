@@ -20,16 +20,16 @@ HardwareSetup::~HardwareSetup() {
 }
 
 bool HardwareSetup::begin() {
+    Serial.println("HW - Init Display");
+    initDisplay();
+    Serial.println("HW - Init WiFi");
+    initWiFi();
     Serial.println("HW - Init Buttons");
     initButtons();
     Serial.println("HW - Init LED");
     initLED();
-    Serial.println("HW - Init Display");
-    initDisplay();
     Serial.println("HW - Init Storage");
     initStorage();
-    Serial.println("HW - Init WiFi");
-    initWiFi();
     Serial.println("HW - Init Time");
     initTime();
     Serial.println("HW - Init WebServer");
@@ -101,19 +101,24 @@ void HardwareSetup::initStorage() {
 
 void HardwareSetup::initWiFi() {
     Serial.println("Initializing WiFi...");
-    if (display) display->drawText(10, 60, "Connecting WiFi...", ILI9341_YELLOW, 2);
-    
+    if (display) display->drawText(10, 60, "Connecting WiFi...", ILI9341_YELLOW, 2);    
     wifi = new WiFiModule(WIFI_SSID, WIFI_PASSWORD);
     if (wifi->connect()) {
+        Serial.println("WiFi Connected!");
         if (display) {
             display->drawText(10, 60, "WiFi: OK", ILI9341_GREEN, 2);
             display->drawText(10, 80, wifi->getLocalIP().c_str(), ILI9341_CYAN, 1);
         }
+        Serial.println("Set LED to Green");
         if (led) led->setColor(LEDModule::COLOR_GREEN, BRIGHT_DIM);
     } else {
+        Serial.println("WiFi Connection Failed!");
         if (display) display->drawText(10, 60, "WiFi: FAIL", ILI9341_RED, 2);
+        Serial.println("Set LED to Red");
         if (led) led->setColor(LEDModule::COLOR_RED, BRIGHT_FULL);
     }
+    Serial.println("WiFi Done");
+
 }
 
 void HardwareSetup::initTime() {

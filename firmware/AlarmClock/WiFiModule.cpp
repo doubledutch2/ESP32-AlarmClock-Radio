@@ -8,16 +8,21 @@ bool WiFiModule::connect() {
     Serial.print("Connecting to WiFi: ");
     Serial.println(ssid);
     
+    Serial.println("WiFi: 1");
     WiFi.mode(WIFI_STA);
+    Serial.println("WiFi: 2");
     WiFi.begin(ssid, password);
     
+    Serial.println("WiFi: 3");
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    Serial.println("WiFi: 4");
         delay(500);
         Serial.print(".");
         attempts++;
     }
     
+    Serial.println("WiFi: 5");
     if (WiFi.status() == WL_CONNECTED) {
         connected = true;
         Serial.println("\nWiFi connected!");

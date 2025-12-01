@@ -7,11 +7,12 @@ TimeModule::TimeModule(const char* ntp, long gmtOffset, int dstOffset)
 }
 
 bool TimeModule::begin(const char* ssid, const char* password) {
+    int attempts = 0;
+/*
     Serial.println("Connecting to WiFi...");
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
     
-    int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
         delay(500);
         Serial.print(".");
@@ -27,7 +28,7 @@ bool TimeModule::begin(const char* ssid, const char* password) {
     Serial.println("\nWiFi connected!");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
-    
+*/    
     // Configure time with NTP
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     

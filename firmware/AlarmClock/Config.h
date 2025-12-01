@@ -8,7 +8,7 @@
 
 // Enable/disable modules
 #define ENABLE_AUDIO     true
-#define ENABLE_LED       false
+#define ENABLE_LED       true
 #define ENABLE_WEB       true
 #define ENABLE_FM_RADIO  true  // Set to true now that we're using FM
 
@@ -27,25 +27,25 @@
 // I2S Audio pins (for Internet Radio via MAX98357A)
 // STEREO: Use two MAX98357A amplifiers
 #define I2S_LRC          7   // Word Select (shared for both amps)
-#define I2S_BCLK         15  // Bit Clock (shared for both amps)
-#define I2S_DOUT_L       16  // Data Out LEFT channel (to first MAX98357A)
+#define I2S_BCLK         38  // 15  // Bit Clock (shared for both amps)
+#define I2S_DOUT_L       39  // 16  // Data Out LEFT channel (to first MAX98357A)
 #define I2S_DOUT_R       17  // Data Out RIGHT channel (to second MAX98357A)
 
 // SPI pins for TFT Display (ILI9341)
-#define TFT_MISO         12  
-#define TFT_MOSI         11  
-#define TFT_SCLK         13  
-#define TFT_CS           10  
-#define TFT_DC           14  
+#define TFT_MISO         37  
+#define TFT_MOSI         36  
+#define TFT_SCLK         40  
+#define TFT_CS           35  
+#define TFT_DC           45  
 #define TFT_RST          21  
 #define TFT_BL           47  // Backlight PWM
 
 // Control pins
 #define VOL_PIN          1   // ADC for volume potentiometer
 #define LED_PIN          48  // RGB LED (built-in on DevKitC)
-#define BRIGHTNESS_PIN   38  // Brightness button
-#define NEXT_STATION_PIN 39  // Next station button
-#define MODE_SWITCH_PIN  40  // Switch between Internet/FM radio
+#define BRIGHTNESS_PIN   42 // 38  // Brightness button
+#define NEXT_STATION_PIN 42 // 39  // Next station button
+#define MODE_SWITCH_PIN  42  // Switch between Internet/FM radio
 
 // FM Radio pins (only used if ENABLE_FM_RADIO is true)
 #if ENABLE_FM_RADIO

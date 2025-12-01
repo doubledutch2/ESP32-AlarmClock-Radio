@@ -10,7 +10,8 @@ StorageModule::StorageModule() : isInitialized(false), stationCount(0) {
 bool StorageModule::begin() {
     // Initialize LittleFS
     Serial.println("Before Init LittleFS");
-    if (!LittleFS.begin(true)) {  // true = format if mount fails
+    // delay(1000);
+    if (!LittleFS.begin(true,"/spiffs")) {  // true = format if mount fails
         Serial.println("LittleFS Mount Failed");
         return false;
     }
