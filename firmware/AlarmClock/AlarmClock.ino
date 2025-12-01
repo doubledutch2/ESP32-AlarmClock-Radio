@@ -49,6 +49,11 @@ void setup() {
     Serial.println("PSRAM not found or not initialized.");
   }
   
+  // Print heap info
+  Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
+  Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
+  Serial.println();
+
   // Initialize all hardware
   Serial.println("Before hardware setup");
   hardware = new HardwareSetup();
@@ -121,6 +126,8 @@ void loop() {
   static unsigned long lastUpdate = 0;
   unsigned long now = millis();
   
+  yield();
+
   // Update all hardware
   hardware->loop();
   

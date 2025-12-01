@@ -32,10 +32,10 @@
 #define I2S_DOUT_R       17  // Data Out RIGHT channel (to second MAX98357A)
 
 // SPI pins for TFT Display (ILI9341)
-#define TFT_MISO         37  
-#define TFT_MOSI         36  
+#define TFT_MISO         12  
+#define TFT_MOSI         11  
 #define TFT_SCLK         40  
-#define TFT_CS           35  
+#define TFT_CS           10  
 #define TFT_DC           45  
 #define TFT_RST          21  
 #define TFT_BL           47  // Backlight PWM
