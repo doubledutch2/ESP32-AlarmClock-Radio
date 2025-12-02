@@ -34,10 +34,10 @@ You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, Lit
 - Events Run On: Core 1
 - Flash Mode: QIO 80MHz
 - Flash Size: 16MB (128Mb)
-- JTAG Adapater: Disabled
+- JTAG Adapter: Disabled
 - Arduino Runs on: Core 1
 - USB Firmware MSC On Boot: Disabled
-- Partion Scheme: Custom (see above partition.csv file)
+- Partition Scheme: Custom (see above partition.csv file)
 - PSRAM: OPI PSRAM
 - Upload Mode: UART0/Hardware CDC
 - Upload Speed: 921600
@@ -49,6 +49,7 @@ You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, Lit
 Pin Assignments ESP32
 
  0 -
+
  1 - VOL_POT
 
  2 -
