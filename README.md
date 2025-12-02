@@ -25,9 +25,8 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 
 You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, LittleFS. Creata file called, which is stored in partitions.csv which is in the .ino directory
 
-The IDE setup is critical (Arduino -> Tools)
-
-USB CDC	On Boot: Enabled
+- The IDE setup is critical (Arduino -> Tools)
+- USB CDC	On Boot: Enabled
 
 CPU Frequency: 240MHz
 
@@ -158,15 +157,6 @@ Pin Assignments ESP32
 4. Configure TFT_eSPI User_Setup.h (see docs/SETUP.md)
 5. Upload to ESP32-S3
 
-## Arduino IDE Settings
-- Board: ESP32S3 Dev Module
-- USB CDC On Boot: Enabled
-- USB Mode: Hardware CDC and JTAG
-- Flash Size: 16MB
-- Partition Scheme: Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
-                    Mine: 8Mb with spiffs (3mb Apps, 1.5Mb SPIFFS)
-- PSRAM: QSPI PSRAM
-         OPI PSRAM
 
 ## Documentation
 
