@@ -28,7 +28,6 @@ You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, Lit
 The IDE setup is critical (Arduino -> Tools)
 
 USB CDC	On Boot: Enabled
-
 CPU Frequency: 240MHz
 
 Core Debug Level: None
