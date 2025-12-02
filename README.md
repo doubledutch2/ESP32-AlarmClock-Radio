@@ -27,45 +27,28 @@ You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, Lit
 
 - The IDE setup is critical (Arduino -> Tools)
 - USB CDC	On Boot: Enabled
-
-CPU Frequency: 240MHz
-
-Core Debug Level: None
-
-USB DFU On Boot: Disabled
-
-Erase All Flash Before Sketch Upload: Enabled
-
-Events Run On: Core 1
-
-Flash Mode: QIO 80MHz
-
-Flash Size: 16MB (128Mb)
-
-JTAG Adapater: Disabled
-
-Arduino Runs on: Core 1
-
-USB Firmware MSC On Boot: Disabled
-
-Partion Scheme: Custom (see above partition.csv file)
-
-PSRAM: OPI PSRAM
-
-Upload Mode: UART0/Hardware CDC
-
-Upload Speed: 921600
-
-USB Mode: Hardware CDC and JTAG
-
-Zigbee Mode: Disabled
+- CPU Frequency: 240MHz
+- Core Debug Level: None
+- USB DFU On Boot: Disabled
+- Erase All Flash Before Sketch Upload: Enabled
+- Events Run On: Core 1
+- Flash Mode: QIO 80MHz
+- Flash Size: 16MB (128Mb)
+- JTAG Adapater: Disabled
+- Arduino Runs on: Core 1
+- USB Firmware MSC On Boot: Disabled
+- Partion Scheme: Custom (see above partition.csv file)
+- PSRAM: OPI PSRAM
+- Upload Mode: UART0/Hardware CDC
+- Upload Speed: 921600
+- USB Mode: Hardware CDC and JTAG
+- Zigbee Mode: Disabled
 
 ## PINOUT
 
 Pin Assignments ESP32
 
  0 -
-
  1 - VOL_POT
 
  2 -
