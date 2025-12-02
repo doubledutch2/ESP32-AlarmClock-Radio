@@ -28,21 +28,37 @@ You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, Lit
 The IDE setup is critical (Arduino -> Tools)
 
 USB CDC	On Boot: Enabled
+
 CPU Frequency: 240MHz
+
 Core Debug Level: None
+
 USB DFU On Boot: Disabled
+
 Erase All Flash Before Sketch Upload: Enabled
+
 Events Run On: Core 1
+
 Flash Mode: QIO 80MHz
+
 Flash Size: 16MB (128Mb)
+
 JTAG Adapater: Disabled
+
 Arduino Runs on: Core 1
+
 USB Firmware MSC On Boot: Disabled
+
 Partion Scheme: Custom (see above partition.csv file)
+
 PSRAM: OPI PSRAM
+
 Upload Mode: UART0/Hardware CDC
+
 Upload Speed: 921600
+
 USB Mode: Hardware CDC and JTAG
+
 Zigbee Mode: Disabled
 
 ## PINOUT
@@ -50,37 +66,69 @@ Zigbee Mode: Disabled
 Pin Assignments ESP32
 
  0 -
+
  1 - VOL_POT
+
  2 -
+
  3 - BTN_UP
+
  4 - BTN_DOWN
+
  5 - BTN_SELECT 
+
  6 - BTN_SNOOZE
+
  7 - I2S_LCR
+
  8 - I2C_SCA
+
  9 - I2C_SCL
+
 10 - TFT_CS
+
 11 - TFT_MOSI
+
 12 - TFT_MISO
+
 13 - TFT_SCLK
+
 14 - 
+
 15 - I2S_BCLK
+
 16 - I2S_DOUT_L
+
 17 - I2S_DOUT_R
+
 18 - Reserved
+
 19 - USB D- (Do not Use)
+
 20 - USB D+ (Do not Use)
+
 21 - TFT_RST
-35 - [PSRAM]
-36 - [PSRAM]
-37 - [PSRAM]
+
+35 - [Reserved PSRAM]
+
+36 - [Reserved PSRAM]
+
+37 - [Reserved PSRAM]
+
 38 - BTN_BRIGHT
+
 39 - BTN_NEXT_STATION
+
 40 - TFT_SCLK [MODE_SWITCH
+
 41 - AUDIO_SWITCH
+
 42 - FM_RESET
+
 45 - 
+
 47 - TFT_BL
+
 48 - LED Build In
 
 
