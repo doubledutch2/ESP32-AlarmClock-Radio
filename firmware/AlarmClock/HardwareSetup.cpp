@@ -146,7 +146,7 @@ void HardwareSetup::initAudio() {
         Serial.println("Initializing Audio...");
         audio = new AudioModule(I2S_BCLK, I2S_LRC, I2S_DOUT_L, MAX_VOLUME);
         audio->begin();
-        audio->setVolume(10);
+        audio->setVolume(3);
         if (display) display->drawText(10, 140, "Audio: OK", ILI9341_GREEN, 2);
     }
 }
