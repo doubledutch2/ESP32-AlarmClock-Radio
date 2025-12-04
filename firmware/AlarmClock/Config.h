@@ -28,8 +28,7 @@
 // STEREO: Use two MAX98357A amplifiers
 #define I2S_LRC          7   // Word Select (shared for both amps)
 #define I2S_BCLK         15  // Bit Clock (shared for both amps)
-#define I2S_DOUT_L       16  // Data Out LEFT channel (to first MAX98357A)
-#define I2S_DOUT_R       17  // Data Out RIGHT channel (to second MAX98357A)
+#define I2S_DOUT         16  // Data Out LEFT channel (to first MAX98357A)
 
 // SPI pins for TFT Display (ILI9341)
 #define TFT_MISO         12  
@@ -73,12 +72,15 @@
 #define MAX_VOLUME       25
 
 // ===== Time Settings =====
-#define GMT_OFFSET       0   // GMT offset in hours
-#define DST_OFFSET       0   // DST offset in hours
+// NOTE: These are DEFAULT values only
+// Actual values are loaded from NVS storage and can be changed via web interface
+// If no values are saved in NVS, these defaults will be used
+#define DEFAULT_GMT_OFFSET_SEC       0        // GMT offset in seconds (0 = GMT/UTC)
+#define DEFAULT_DAYLIGHT_OFFSET_SEC  0        // DST offset in seconds (3600 = +1 hour)
 
-// NEW: Time settings in seconds (required by TimeModule)
-#define GMT_OFFSET_SEC       0        // GMT offset in seconds (0 = GMT)
-#define DAYLIGHT_OFFSET_SEC  3600     // DST offset in seconds (3600 = +1 hour for BST)
+// For compatibility with existing code
+#define GMT_OFFSET_SEC       DEFAULT_GMT_OFFSET_SEC
+#define DAYLIGHT_OFFSET_SEC  DEFAULT_DAYLIGHT_OFFSET_SEC
 
 // ===== LED Settings =====
 #define BRIGHT_FULL      250

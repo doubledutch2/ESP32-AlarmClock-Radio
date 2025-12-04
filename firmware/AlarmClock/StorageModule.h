@@ -6,6 +6,7 @@
 #include "CommonTypes.h"
 
 #define MAX_STATIONS 20
+#define MAX_INTERNET_STATIONS 10
 
 class StorageModule {
 private:
@@ -34,6 +35,18 @@ public:
     int getFMStationCount();
     void setFMStationCount(int count);
     void clearFMStations();
+    
+    // Internet Radio Station management using NVS
+    bool saveInternetStation(int index, const char* name, const char* url);
+    bool loadInternetStation(int index, String &name, String &url);
+    bool deleteInternetStation(int index);
+    int getInternetStationCount();
+    void setInternetStationCount(int count);
+    void clearInternetStations();
+    
+    // Timezone settings using NVS
+    bool saveTimezone(long gmtOffset, long dstOffset);
+    bool loadTimezone(long &gmtOffset, long &dstOffset);
     
     // Utility
     void factoryReset();

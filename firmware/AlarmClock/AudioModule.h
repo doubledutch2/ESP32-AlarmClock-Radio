@@ -17,7 +17,7 @@ private:
     bool isPlaying;
 
 public:
-    AudioModule(int bclkPin, int lrcPin, int doutPin, int maxVol = 21);
+    AudioModule(int bclkPin, int lrcPin, int doutPin, int maxVol = 21, int defaultVolume=0);
     
     void begin();
     void loop();

@@ -118,12 +118,23 @@ void HardwareSetup::initWiFi() {
         if (led) led->setColor(LEDModule::COLOR_RED, BRIGHT_FULL);
     }
     Serial.println("WiFi Done");
-
 }
 
 void HardwareSetup::initTime() {
     Serial.println("Initializing Time...");
-    timeModule = new TimeModule("pool.ntp.org", GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC);
+    
+    // Load timezone settings from storage if available
+    long gmtOffset = DEFAULT_GMT_OFFSET_SEC;
+    long dstOffset = DEFAULT_DAYLIGHT_OFFSET_SEC;
+    
+    if (storage && storage->isReady()) {
+        storage->loadTimezone(gmtOffset, dstOffset);
+        Serial.printf("Using stored timezone: GMT %ld, DST %d\n", gmtOffset, dstOffset);
+    } else {
+        Serial.println("Using default timezone settings");
+    }
+    
+    timeModule = new TimeModule("pool.ntp.org", gmtOffset, dstOffset);
     if (timeModule->begin(WIFI_SSID, WIFI_PASSWORD)) {
         if (display) display->drawText(10, 100, "Time: OK", ILI9341_GREEN, 2);
     } else {
@@ -134,6 +145,15 @@ void HardwareSetup::initTime() {
 void HardwareSetup::initWebServer() {
     if (ENABLE_WEB && wifi && wifi->isConnected()) {
         webServer = new WebServerModule();
+        
+        // IMPORTANT: Set storage and time module BEFORE calling begin()
+        if (storage) {
+            webServer->setStorageModule(storage);
+        }
+        if (timeModule) {
+            webServer->setTimeModule(timeModule);
+        }
+        
         webServer->begin(MDNS_NAME);
         if (display) display->drawText(10, 120, "Web: OK", ILI9341_GREEN, 2);
         Serial.printf("Web interface: http://%s.local or http://%s\n", 
@@ -144,7 +164,7 @@ void HardwareSetup::initWebServer() {
 void HardwareSetup::initAudio() {
     if (ENABLE_AUDIO) {
         Serial.println("Initializing Audio...");
-        audio = new AudioModule(I2S_BCLK, I2S_LRC, I2S_DOUT_L, MAX_VOLUME);
+        audio = new AudioModule(I2S_BCLK, I2S_LRC, I2S_DOUT, MAX_VOLUME);
         audio->begin();
         audio->setVolume(3);
         if (display) display->drawText(10, 140, "Audio: OK", ILI9341_GREEN, 2);

@@ -18,18 +18,72 @@ AlarmController* alarmController = nullptr;
 AlarmState alarmState;
 UIState uiState;
 
-// Internet radio stations
-InternetRadioStation defaultStations[] = {
-  {"BBC 5 Live", "https://stream.live.vc.bbcmedia.co.uk/bbc_radio_five_live"},
-  {"Veronica", "https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICAAAC.aac"},
-  {"NPO Radio 1", "https://icecast.omroep.nl/radio1-bb-mp3"}
-};
-InternetRadioStation* stationList = defaultStations;
-int stationCount = 3;
+// Internet radio stations - dynamically loaded from storage
+InternetRadioStation* stationList = nullptr;
+int stationCount = 0;
 
 // Constants
 const unsigned long DEBOUNCE_DELAY = 200;
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;
+
+void loadStationsFromStorage() {
+  if (!hardware || !hardware->getStorage()) return;
+  
+  StorageModule* storage = hardware->getStorage();
+  int savedCount = storage->getInternetStationCount();
+  
+  Serial.printf("Loading %d stations from storage\n", savedCount);
+  
+  // Free old station list if it exists
+  if (stationList != nullptr) {
+    delete[] stationList;
+    stationList = nullptr;
+  }
+  
+  // If no stations saved, create default stations
+  if (savedCount == 0) {
+    Serial.println("No stations in storage, using defaults");
+    stationCount = 3;
+    stationList = new InternetRadioStation[stationCount];
+    
+    stationList[0].name = "BBC World Service";
+    stationList[0].url = "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service";
+
+    stationList[1].name = "Radio Paradise";
+    stationList[1].url = "http://stream.radioparadise.com/aac-128";
+
+    stationList[2].name = "LBC";
+    stationList[2].url = "https://ice-sov.musicradio.com/LBC973";
+    
+    stationList[3].name = "Veronica";
+    stationList[3].url = "https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICAAAC.aac";
+    
+    stationList[4].name = "NPO Radio 1";
+    stationList[4].url = "https://icecast.omroep.nl/radio1-bb-mp3";
+
+    
+
+    
+    // Save defaults to storage
+    for (int i = 0; i < stationCount; i++) {
+      storage->saveInternetStation(i, stationList[i].name.c_str(), stationList[i].url.c_str());
+    }
+    storage->setInternetStationCount(stationCount);
+  } else {
+    // Load stations from storage
+    stationCount = savedCount;
+    stationList = new InternetRadioStation[stationCount];
+    
+    for (int i = 0; i < stationCount; i++) {
+      String name, url;
+      if (storage->loadInternetStation(i, name, url)) {
+        stationList[i].name = name;
+        stationList[i].url = url;
+        Serial.printf("Loaded station %d: %s\n", i, name.c_str());
+      }
+    }
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -61,6 +115,9 @@ void setup() {
     Serial.println("Hardware initialization failed!");
     while(1) delay(1000);
   }
+
+  // Load stations from storage (must be done AFTER hardware init)
+  loadStationsFromStorage();
 
   // Initialize menu system
   menu = new MenuSystem(
@@ -103,6 +160,12 @@ void setup() {
     if (hardware->getFMRadio()) {
       hardware->getFMRadio()->setFrequency(freq);
     }
+    
+    // Load timezone settings (for future use - requires restart to apply)
+    long gmtOffset, dstOffset;
+    hardware->getStorage()->loadTimezone(gmtOffset, dstOffset);
+    Serial.printf("Timezone loaded: GMT offset %ld seconds, DST offset %d seconds\n", 
+                  gmtOffset, dstOffset);
   }
   
   // Connect states to menu system
@@ -110,8 +173,12 @@ void setup() {
   menu->setUIState(&uiState);
   menu->setStationList(stationList, stationCount);
   
-  // Setup web callback
+  // Pass storage and time module to web server
   if (hardware->getWebServer()) {
+    hardware->getWebServer()->setStorageModule(hardware->getStorage());
+    hardware->getWebServer()->setTimeModule(hardware->getTimeModule());
+    
+    // Setup web callback
     hardware->getWebServer()->setPlayCallback([](const char* name, const char* url) {
       if (hardware->getAudio()) {
         hardware->getAudio()->playCustom(name, url);
@@ -119,7 +186,18 @@ void setup() {
     });
   }
   
+  // Pass station list to audio module
+  if (hardware->getAudio()) {
+    hardware->getAudio()->setStationList(stationList, stationCount);
+  }
+  
   Serial.println("Setup complete!\n");
+  Serial.printf("Loaded %d internet radio stations\n", stationCount);
+  Serial.println("Web interface available at:");
+  if (hardware->getWiFi()) {
+    Serial.printf("  http://%s\n", hardware->getWiFi()->getLocalIP().c_str());
+    Serial.printf("  http://%s.local\n", MDNS_NAME);
+  }
 }
 
 void loop() {

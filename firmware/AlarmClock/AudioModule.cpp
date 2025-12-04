@@ -1,8 +1,8 @@
 #include "AudioModule.h"
 
-AudioModule::AudioModule(int bclkPin, int lrcPin, int doutPin, int maxVol)
+AudioModule::AudioModule(int bclkPin, int lrcPin, int doutPin, int maxVol,int lastVolume)
     : stations(nullptr), stationCount(0), currentStation(-1), 
-      currentVolume(10), maxVolume(maxVol), currentStationName("Unknown"), isPlaying(false) {
+      currentVolume(lastVolume), maxVolume(maxVol), currentStationName("Unknown"), isPlaying(false) {
     
     audio.setPinout(bclkPin, lrcPin, doutPin);
 }

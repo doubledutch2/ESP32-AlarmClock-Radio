@@ -1,15 +1,27 @@
+https://github.com/doubledutch2/ESP32-AlarmClock-Radio
+w
+The attached is the repository of code you created previously. Please do not create any new code unless you ask me for link to the specific URLs to files you want to change so we are sure you are updating my code rather that creating it from scratch.  I have updated the following files since you last created code:
+
+AlarmClock.ino
+Config.h 
+StorageModule.h 
+WebServerModule.cpp
+
+The Web Interface you created does not use the InternetRadioStations array, instead the stations are hard coded. That's wrong. Can you update the web interface to include functionality (in a menu driven system using multiple pages) to:
+
+Add up to 10 different Streaming URLs stored in the InternetRadioStations and which are stored in None littlefs
+Configure your timezone and dailight savings settings
+
+
 1) Instead of press-buttons, can we use the Touch Screen interface instead to change settings releasing the relevant GPIO Pins for the TFT screen. I have big fingers so don't make the buttons too small
 
-2) Can you update the web interface to include functionality (in a menu driven system using multiple pages) to:
+2) The Web Interface you created does not use the InternetRadioStations array, instead the stations are hard coded. That's wrong. Can you update the web interface to include functionality (in a menu driven system using multiple pages) to:
 
-Add up to 10 different Streaming URLs
+Add up to 10 different Streaming URLs stored in the InternetRadioStations and which are stored in None littlefs
 Configure your timezone and dailight savings settings
 Set up to two different alarm times either once, daily, weekdays or weekends with the ability to switch them off/on
-All settings which can be changed on the TFT screen
 
-The Webportal should also availabe as a WiFi access point to configure the WiFi Access credentials
-
-3) I understand the ESP32-audioI2S library supports the same functionality as the one we currently use but supports stereo output. If you agree, can you update this project to use that library instead
+3) All settings which can be changed on the TFT screen.  The Webportal should also availabe as a WiFi access point to configure the WiFi Access credentials
 
 
 

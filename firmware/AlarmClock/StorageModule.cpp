@@ -10,7 +10,6 @@ StorageModule::StorageModule() : isInitialized(false), stationCount(0) {
 bool StorageModule::begin() {
     // Initialize LittleFS
     Serial.println("Before Init LittleFS");
-    // delay(1000);
     if (!LittleFS.begin(true,"/spiffs")) {  // true = format if mount fails
         Serial.println("LittleFS Mount Failed");
         return false;
@@ -171,6 +170,91 @@ void StorageModule::clearFMStations() {
     Serial.println("All FM stations cleared");
 }
 
+// ===== INTERNET RADIO STATION STORAGE =====
+bool StorageModule::saveInternetStation(int index, const char* name, const char* url) {
+    if (!isInitialized || index < 0 || index >= MAX_INTERNET_STATIONS) return false;
+    
+    char nameKey[16], urlKey[16];
+    sprintf(nameKey, "inet_n_%d", index);
+    sprintf(urlKey, "inet_u_%d", index);
+    
+    prefs.putString(nameKey, name);
+    prefs.putString(urlKey, url);
+    
+    Serial.printf("Saved internet station %d: %s\n", index, name);
+    return true;
+}
+
+bool StorageModule::loadInternetStation(int index, String &name, String &url) {
+    if (!isInitialized || index < 0 || index >= MAX_INTERNET_STATIONS) return false;
+    
+    char nameKey[16], urlKey[16];
+    sprintf(nameKey, "inet_n_%d", index);
+    sprintf(urlKey, "inet_u_%d", index);
+    
+    name = prefs.getString(nameKey, "");
+    url = prefs.getString(urlKey, "");
+    
+    return (name.length() > 0 && url.length() > 0);
+}
+
+bool StorageModule::deleteInternetStation(int index) {
+    if (!isInitialized || index < 0 || index >= MAX_INTERNET_STATIONS) return false;
+    
+    char nameKey[16], urlKey[16];
+    sprintf(nameKey, "inet_n_%d", index);
+    sprintf(urlKey, "inet_u_%d", index);
+    
+    prefs.remove(nameKey);
+    prefs.remove(urlKey);
+    
+    Serial.printf("Deleted internet station %d\n", index);
+    return true;
+}
+
+int StorageModule::getInternetStationCount() {
+    if (!isInitialized) return 0;
+    return prefs.getInt("inet_count", 0);
+}
+
+void StorageModule::setInternetStationCount(int count) {
+    if (!isInitialized) return;
+    if (count >= 0 && count <= MAX_INTERNET_STATIONS) {
+        prefs.putInt("inet_count", count);
+    }
+}
+
+void StorageModule::clearInternetStations() {
+    if (!isInitialized) return;
+    
+    for (int i = 0; i < MAX_INTERNET_STATIONS; i++) {
+        deleteInternetStation(i);
+    }
+    setInternetStationCount(0);
+    Serial.println("All internet stations cleared");
+}
+
+// ===== TIMEZONE SETTINGS =====
+bool StorageModule::saveTimezone(long gmtOffset, long dstOffset) {
+    if (!isInitialized) return false;
+    
+    prefs.putLong("gmtOffset", gmtOffset);
+    prefs.putInt("dstOffset", dstOffset);
+    
+    Serial.printf("Timezone saved: GMT %ld, DST %d\n", gmtOffset, dstOffset);
+    return true;
+}
+
+bool StorageModule::loadTimezone(long &gmtOffset, long &dstOffset) {
+    if (!isInitialized) return false;
+    
+    gmtOffset = prefs.getLong("gmtOffset", 0);
+    dstOffset = prefs.getInt("dstOffset", 0);
+    
+    Serial.printf("Timezone loaded: GMT %ld, DST %d\n", gmtOffset, dstOffset);
+    return true;
+}
+
 void StorageModule::factoryReset() {
     Serial.println("Performing factory reset...");
     
@@ -179,6 +263,9 @@ void StorageModule::factoryReset() {
     
     // Clear FM stations
     clearFMStations();
+    
+    // Clear internet stations
+    clearInternetStations();
     
     // Delete stations file
     if (LittleFS.exists(stationsFile)) {

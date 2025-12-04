@@ -1,10 +1,12 @@
 /*
  * I2S Audio Debug Test for ESP32-S3
  * Tests audio output step by step
+ * Using ESP32-audioI2S library by schreibfaul1
+ * Library: https://github.com/schreibfaul1/ESP32-audioI2S
  */
 
 #include <Arduino.h>
-#include <Audio.h>
+#include <Audio.h>  // ESP32-audioI2S library
 
 // Your pin definitions
 #define I2S_BCLK    15
@@ -23,7 +25,8 @@ void setup() {
     delay(2000);
     
     Serial.println("\n\n========================================");
-    Serial.println("    ESP32-S3 I2S Audio Debug Test");
+    Serial.println("  ESP32-S3 I2S Audio Debug Test");
+    Serial.println("  Using ESP32-audioI2S Library");
     Serial.println("========================================\n");
     
     // Test 1: Check PSRAM
@@ -32,6 +35,7 @@ void setup() {
     if (!psramInit()) {
         Serial.println("❌ PSRAM init FAILED!");
         Serial.println("   Fix: Check Tools -> PSRAM -> OPI PSRAM");
+        Serial.println("   This library REQUIRES PSRAM!");
         return;
     }
     Serial.printf("✓ PSRAM initialized\n");
@@ -113,31 +117,63 @@ void setup() {
     Serial.println();
     
     // Test 5: Audio Library Init
-    Serial.println("Test 5: Audio Library");
-    Serial.println("---------------------");
+    Serial.println("Test 5: Audio Library Init");
+    Serial.println("--------------------------");
     
-    // Initialize audio
+    // Initialize audio with I2S pins
     audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-    audio.setVolume(4); // 0-21
+    
+    // Set volume (0-21, where 21 is max)
+    audio.setVolume(5);
+    
+    // Optional: Set audio output to mono or stereo
+    // audio.forceMono(true);  // Uncomment for mono output
     
     Serial.println("✓ Audio object created");
     Serial.printf("  Volume set to: 12/21\n");
+    Serial.println("  Output mode: Stereo (default)");
     Serial.println();
     
     // Test 6: Try to play audio
-    Serial.println("Test 6: Audio Stream Test");
-    Serial.println("-------------------------");
-    Serial.println("Attempting to connect to test stream...");
-    Serial.println("Stream: https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICAAAC.aac");
+    Serial.println("Test 6: Audio Stream Test (STEREO)");
+    Serial.println("-----------------------------------");
+    Serial.println("Attempting to connect to stereo test stream...");
     
-    if (audio.connecttohost("https://playerservices.streamtheworld.com/api/livestream-redirect/VERONICAAAC.aac")) {
-        Serial.println("✓ Connected to stream!");
-        Serial.println("\n🔊 YOU SHOULD HEAR AUDIO NOW!");
-        Serial.println("   If not, check:");
-        Serial.println("   1. Speaker/amplifier is powered on");
-        Serial.println("   2. Wiring is correct");
-        Serial.println("   3. MAX98357A EN pin is HIGH (or not connected)");
-        Serial.println("   4. Volume on amplifier");
+    // Try multiple known stereo streams
+    const char* stereoStreams[] = {
+        "http://stream.live.vc.bbcmedia.co.uk/bbc_world_service",  // BBC World Service - 128kbps stereo
+        "http://stream.radioparadise.com/aac-128",                  // Radio Paradise - 128kbps stereo AAC
+        "http://icecast.omroep.nl/radio1-bb-mp3",                   // NPO Radio 1 - 192kbps stereo
+    };
+    
+    bool connected = false;
+    for (int i = 0; i < 3 && !connected; i++) {
+        Serial.printf("\nTrying stream %d: %s\n", i+1, stereoStreams[i]);
+        connected = audio.connecttohost(stereoStreams[i]);
+        if (!connected) {
+            Serial.println("  Failed, trying next...");
+            delay(500);
+        }
+    }
+    
+    if (connected) {
+        Serial.println("✓ Connected to STEREO stream!");
+        Serial.println("\n🔊 YOU SHOULD HEAR STEREO AUDIO NOW!");
+        Serial.println("   Test stereo separation:");
+        Serial.println("   - Listen for different sounds in left vs right speakers");
+        Serial.println("   - Radio announcers often pan between channels");
+        Serial.println("\n   If no audio, check:");
+        Serial.println("   1. Both speaker/amplifiers are powered on");
+        Serial.println("   2. Wiring is correct:");
+        Serial.println("      - Shared: BCLK to GPIO 15, LRC to GPIO 7");
+        Serial.println("      - LEFT amp: DIN to GPIO 16, SD to GND or VDD");
+        Serial.println("      - RIGHT amp: DIN to GPIO 17, SD to FLOAT or opposite");
+        Serial.println("   3. MAX98357A EN pins are HIGH (or not connected)");
+        Serial.println("   4. Volume on amplifiers");
+        Serial.println("\n   IMPORTANT: Both MAX98357A must share SAME DOUT pin!");
+        Serial.println("   Use SD pin to select left/right channel:");
+        Serial.println("   - SD = GND → plays LEFT channel");
+        Serial.println("   - SD = VDD or FLOAT → plays RIGHT channel");
         testsPassed = true;
     } else {
         Serial.println("❌ Failed to connect to stream");
@@ -145,6 +181,7 @@ void setup() {
         Serial.println("   - Network issue");
         Serial.println("   - Stream URL changed");
         Serial.println("   - Audio buffer allocation failed");
+        Serial.println("   - PSRAM not available");
     }
     
     Serial.println("\n========================================");
@@ -160,9 +197,9 @@ void loop() {
     if (testsPassed) {
         audio.loop();
         
-        // Print audio info every 5 seconds
+        // Print audio info every 10 seconds
         static unsigned long lastPrint = 0;
-        if (millis() - lastPrint > 5000) {
+        if (millis() - lastPrint > 10000) {
             lastPrint = millis();
             Serial.println("Audio playing...");
             Serial.printf("  Free heap: %d KB\n", ESP.getFreeHeap() / 1024);
@@ -172,9 +209,24 @@ void loop() {
     delay(1);
 }
 
-// Audio library event handlers (optional but useful for debugging)
+// ==========================================
+// ESP32-audioI2S callback functions
+// These provide detailed feedback about audio events
+// ==========================================
+
+// Optional detailed callback (shows all events with enum)
 void audio_info(const char *info) {
-    Serial.print("Audio info: ");
+    Serial.print("Info: ");
+    Serial.println(info);
+}
+
+void audio_id3data(const char *info) {
+    Serial.print("ID3 Data: ");
+    Serial.println(info);
+}
+
+void audio_eof_mp3(const char *info) {
+    Serial.print("End of file: ");
     Serial.println(info);
 }
 
@@ -193,6 +245,22 @@ void audio_bitrate(const char *info) {
     Serial.println(info);
 }
 
-void audio_eof_mp3(const char *info) {
-    Serial.println("End of file");
+void audio_commercial(const char *info) {
+    Serial.print("Commercial: ");
+    Serial.println(info);
+}
+
+void audio_icyurl(const char *info) {
+    Serial.print("ICY URL: ");
+    Serial.println(info);
+}
+
+void audio_lasthost(const char *info) {
+    Serial.print("Last host: ");
+    Serial.println(info);
+}
+
+void audio_eof_speech(const char *info) {
+    Serial.print("End of speech: ");
+    Serial.println(info);
 }
