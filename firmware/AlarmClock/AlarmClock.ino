@@ -43,7 +43,7 @@ void loadStationsFromStorage() {
   // If no stations saved, create default stations
   if (savedCount == 0) {
     Serial.println("No stations in storage, using defaults");
-    stationCount = 3;
+    stationCount = 5;
     stationList = new InternetRadioStation[stationCount];
     
     stationList[0].name = "BBC World Service";
