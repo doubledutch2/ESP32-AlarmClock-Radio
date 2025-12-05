@@ -142,6 +142,12 @@ Pin Assignments ESP32
 5. Upload to ESP32-S3
 
 
+## Wave Files
+
+They are stored in the SketchDirectory/data/Alarmsounds folder. Use  this tool to upload them:
+
+https://randomnerdtutorials.com/arduino-ide-2-install-esp32-littlefs/
+
 ## Documentation
 
 - [Wiring Guide](docs/WIRING.md)

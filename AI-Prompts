@@ -9,29 +9,18 @@ If possible I would like to preload these mp3 files when uploading the code to t
 With the above logic - I no longer need the buzzer logic so tell me how to remove that.
 
 -------------------
-
-The attached is the repository of code you created previously. Please do not create any new code unless you ask me for link to the specific URLs to files you want to change so we are sure you are updating my code rather that creating it from scratch.  I have updated the following files since you last created code:
+- For the VOL_PIN, Instead of relying only on the basic analogRead(), you should explicitly configure the specific ADC unit (ADC1 or ADC2) and its attenuation. This ensures a consistent setup on every boot.
+   
+- The attached is the repository of code you created previously. Please do not create any new code unless you ask me for link to the specific URLs to files you want to change so we are sure you are updating my code rather that creating it from scratch.  I have updated the following files since you last created code:
 
 AlarmClock.ino
 Config.h 
 StorageModule.h 
 WebServerModule.cpp
 
-The Web Interface you created does not use the InternetRadioStations array, instead the stations are hard coded. That's wrong. Can you update the web interface to include functionality (in a menu driven system using multiple pages) to:
+- Instead of press-buttons, can we use the Touch Screen interface instead to change settings releasing the relevant GPIO Pins for the TFT screen. I have big fingers so don't make the buttons too small
 
-Add up to 10 different Streaming URLs stored in the InternetRadioStations and which are stored in None littlefs
-Configure your timezone and dailight savings settings
-
-
-1) Instead of press-buttons, can we use the Touch Screen interface instead to change settings releasing the relevant GPIO Pins for the TFT screen. I have big fingers so don't make the buttons too small
-
-2) The Web Interface you created does not use the InternetRadioStations array, instead the stations are hard coded. That's wrong. Can you update the web interface to include functionality (in a menu driven system using multiple pages) to:
-
-Add up to 10 different Streaming URLs stored in the InternetRadioStations and which are stored in None littlefs
-Configure your timezone and dailight savings settings
-Set up to two different alarm times either once, daily, weekdays or weekends with the ability to switch them off/on
-
-3) All settings which can be changed on the TFT screen.  The Webportal should also availabe as a WiFi access point to configure the WiFi Access credentials
+- All settings which can be changed on the TFT screen.  The Webportal should also availabe as a WiFi access point to configure the WiFi Access credentials
 
 
 
