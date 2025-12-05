@@ -9,7 +9,7 @@ If possible I would like to preload these mp3 files when uploading the code to t
 With the above logic - I no longer need the buzzer logic so tell me how to remove that.
 
 -------------------
-- For the VOL_PIN, Instead of relying only on the basic analogRead(), you should explicitly configure the specific ADC unit (ADC1 or ADC2) and its attenuation. This ensures a consistent setup on every boot.
+- For the VOL_PIN - when rebooting the ESP32, sometime you need to turn the potentiometer clockwise to turn up the volume, other times you need to turn it any-clockwise. Some suggested that instead of relying only on the basic analogRead(), you should explicitly configure the specific ADC unit (ADC1 or ADC2) and its attenuation. This ensures a consistent setup on every boot.
    
 - The attached is the repository of code you created previously. Please do not create any new code unless you ask me for link to the specific URLs to files you want to change so we are sure you are updating my code rather that creating it from scratch.  I have updated the following files since you last created code:
 
@@ -22,6 +22,16 @@ WebServerModule.cpp
 
 - All settings which can be changed on the TFT screen.  The Webportal should also availabe as a WiFi access point to configure the WiFi Access credentials
 
+UI Changes
+
+- TFT
+
+Boot Logic: Clear Screen then write a line, corresponding to the hardwares setup entry sequence with what you are doing and an red X for failure or a green tick ffor success, each hardwares setup line has its own line, same font, same colour then wait for 3 seconds before displaying the alarm screen. Font size, colour and 3 second delay to be configured in Config.h
+
+Alarm Screen: Replace Wifi OK with standard wifi symbol showing the wifi signal strength. Change date format to Wed, 21 Nov 2025. Remove navigation options, ONLY show alarms if they are switch on: e.g. 
+
+"1 - 07:30 - Daily"
+"3 - 21:00 - Once"
 
 
 

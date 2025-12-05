@@ -1,7 +1,7 @@
 #include "AlarmController.h"
 
-AlarmController::AlarmController(BuzzerModule* buzz, AudioModule* aud, DisplayILI9341* disp)
-    : buzzer(buzz), audio(aud), display(disp) {
+AlarmController::AlarmController(AudioModule* aud, DisplayILI9341* disp)
+    : audio(aud), display(disp) {
 }
 
 void AlarmController::checkAlarm(AlarmState* alarm, TimeModule* time) {
@@ -34,11 +34,6 @@ void AlarmController::triggerAlarm(AlarmState* alarm) {
     
     Serial.println("ALARM TRIGGERED!");
     
-    // Sound the buzzer
-    if (buzzer) {
-        buzzer->playAlarm();
-    }
-    
     // Start playing first station if available
     if (audio && audio->getStationCount() > 0) {
         audio->playStation(0);
@@ -61,11 +56,6 @@ void AlarmController::snoozeAlarm(AlarmState* alarm) {
     alarm->snoozed = true;
     alarm->snoozeTime = millis() + SNOOZE_DURATION;
     
-    // Stop buzzer
-    if (buzzer) {
-        buzzer->stopTone();
-    }
-    
     // Stop audio (optional - you might want to keep it playing)
     // if (audio) audio->stop();
     
@@ -86,11 +76,6 @@ void AlarmController::stopAlarm(AlarmState* alarm) {
     
     alarm->triggered = false;
     alarm->snoozed = false;
-    
-    // Stop buzzer
-    if (buzzer) {
-        buzzer->stopTone();
-    }
     
     // Optionally stop audio
     // if (audio) audio->stop();

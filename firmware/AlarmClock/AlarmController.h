@@ -12,12 +12,11 @@
 
 class AlarmController {
 private:
-    BuzzerModule* buzzer;
     AudioModule* audio;
     DisplayILI9341* display;
 
 public:
-    AlarmController(BuzzerModule* buzz, AudioModule* aud, DisplayILI9341* disp);
+    AlarmController(AudioModule* aud, DisplayILI9341* disp);
     
     void checkAlarm(AlarmState* alarm, TimeModule* time);
     void triggerAlarm(AlarmState* alarm);

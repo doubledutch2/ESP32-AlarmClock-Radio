@@ -125,13 +125,11 @@ void setup() {
     hardware->getTimeModule(),
     hardware->getFMRadio(),
     hardware->getAudio(),
-    hardware->getBuzzer(),
     hardware->getStorage()
   );
   
   // Initialize alarm controller
   alarmController = new AlarmController(
-    hardware->getBuzzer(),
     hardware->getAudio(),
     hardware->getDisplay()
   );
