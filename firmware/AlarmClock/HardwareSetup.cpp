@@ -2,7 +2,7 @@
 
 HardwareSetup::HardwareSetup() 
     : display(nullptr), timeModule(nullptr), fmRadio(nullptr), 
-      buzzer(nullptr), storage(nullptr), wifi(nullptr), 
+      storage(nullptr), wifi(nullptr), 
       audio(nullptr), webServer(nullptr), led(nullptr),
       lastVolumePotValue(-1), brightnessLevel(3) {
 }
@@ -11,7 +11,6 @@ HardwareSetup::~HardwareSetup() {
     if (display) delete display;
     if (timeModule) delete timeModule;
     if (fmRadio) delete fmRadio;
-    if (buzzer) delete buzzer;
     if (storage) delete storage;
     if (wifi) delete wifi;
     if (audio) delete audio;
@@ -38,8 +37,6 @@ bool HardwareSetup::begin() {
     initAudio();
     Serial.println("HW - Init FMRadio");
     initFMRadio();
-    Serial.println("HW - Init Buzzer");
-    initBuzzer();
     Serial.println("HW - Init Done");
     
     delay(2000);
@@ -185,14 +182,6 @@ void HardwareSetup::initFMRadio() {
             if (display) display->drawText(10, 160, "FM Radio: FAIL", ILI9341_RED, 2);
         }
     }
-}
-
-void HardwareSetup::initBuzzer() {
-    Serial.println("Initializing Buzzer...");
-    buzzer = new BuzzerModule(BUZZER_PIN);
-    buzzer->begin();
-    buzzer->playBeep();
-    if (display) display->drawText(10, 180, "Buzzer: OK", ILI9341_GREEN, 2);
 }
 
 void HardwareSetup::initLED() {

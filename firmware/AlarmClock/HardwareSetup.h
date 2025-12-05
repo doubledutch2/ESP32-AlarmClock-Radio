@@ -5,7 +5,6 @@
 #include "DisplayILI9341.h"
 #include "TimeModule.h"
 #include "FMRadioModule.h"
-#include "BuzzerModule.h"
 #include "StorageModule.h"
 #include "WiFiModule.h"
 #include "AudioModule.h"
@@ -17,7 +16,6 @@ private:
     DisplayILI9341* display;
     TimeModule* timeModule;
     FMRadioModule* fmRadio;
-    BuzzerModule* buzzer;
     StorageModule* storage;
     WiFiModule* wifi;
     AudioModule* audio;
@@ -38,7 +36,6 @@ public:
     DisplayILI9341* getDisplay() { return display; }
     TimeModule* getTimeModule() { return timeModule; }
     FMRadioModule* getFMRadio() { return fmRadio; }
-    BuzzerModule* getBuzzer() { return buzzer; }
     StorageModule* getStorage() { return storage; }
     WiFiModule* getWiFi() { return wifi; }
     AudioModule* getAudio() { return audio; }
@@ -54,7 +51,6 @@ private:
     void initWebServer();
     void initAudio();
     void initFMRadio();
-    void initBuzzer();
     void initLED();
     
     void handleVolumeControl();

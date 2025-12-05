@@ -6,7 +6,6 @@
 #include "TimeModule.h"
 #include "FMRadioModule.h"
 #include "AudioModule.h"
-#include "BuzzerModule.h"
 #include "StorageModule.h"
 #include "CommonTypes.h"
 
@@ -41,7 +40,6 @@ private:
     TimeModule* timeModule;
     FMRadioModule* fmRadio;
     AudioModule* audio;
-    BuzzerModule* buzzer;
     StorageModule* storage;
     
     AlarmState* alarmState;
@@ -53,7 +51,7 @@ private:
 
 public:
     MenuSystem(DisplayILI9341* disp, TimeModule* time, FMRadioModule* fm, 
-               AudioModule* aud, BuzzerModule* buzz, StorageModule* stor);
+               AudioModule* aud, StorageModule* stor);
     
     void setAlarmState(AlarmState* alarm);
     void setUIState(UIState* ui);

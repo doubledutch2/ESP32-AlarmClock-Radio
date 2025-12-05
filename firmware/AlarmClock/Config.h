@@ -52,9 +52,6 @@
   #define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
 #endif
 
-// Buzzer and Button Pins
-#define BUZZER_PIN  25
-
 // Button Pins for alarm clock interface
 #define BTN_UP      3
 #define BTN_DOWN    4

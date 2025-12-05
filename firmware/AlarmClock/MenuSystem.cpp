@@ -1,9 +1,9 @@
 #include "MenuSystem.h"
 
 MenuSystem::MenuSystem(DisplayILI9341* disp, TimeModule* time, FMRadioModule* fm, 
-                       AudioModule* aud, BuzzerModule* buzz, StorageModule* stor)
+                       AudioModule* aud , StorageModule* stor)
     : display(disp), timeModule(time), fmRadio(fm), 
-      audio(aud), buzzer(buzz), storage(stor),
+      audio(aud),  storage(stor),
       alarmState(nullptr), uiState(nullptr),
       stationList(nullptr), stationCount(0), wifiConnected(false) {
 }
@@ -36,7 +36,6 @@ void MenuSystem::handleButtons(bool up, bool down, bool select, bool snooze) {
         alarmState->triggered = false;
         alarmState->snoozed = true;
         alarmState->snoozeTime = millis() + (5 * 60 * 1000);
-        if (buzzer) buzzer->stopTone();
         if (display) {
             display->clear();
             display->drawText(70, 100, "SNOOZED", ILI9341_YELLOW, 3);
@@ -45,11 +44,6 @@ void MenuSystem::handleButtons(bool up, bool down, bool select, bool snooze) {
         delay(2000);
         uiState->needsRedraw = true;
         return;
-    }
-    
-    // Play beep for any button press
-    if (buzzer && (up || down || select)) {
-        buzzer->playBeep();
     }
     
     // Route to appropriate menu handler
