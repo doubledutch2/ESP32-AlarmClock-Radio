@@ -1,15 +1,15 @@
-I2C
+I2C: OLED / Si4735
 
 - SDA 8
 - SCL 9
 
-I2S
+I2S: MAX98357A
 
 - LRC 7
 - BCLK 15
 - DOUT 16
 
-TFT
+TFT: ILI9341
 
 - VCC (Red)
 - GND (Black)
@@ -20,5 +20,16 @@ TFT
 - SCK 		- 40 - (Yellow/Black)
 - LED 		- 47 -  100 Ohm Resistor - (White/Black)
 - SDO/MISO 	- 12 - (Blue/Black)
+
+Si4735
+
+- SCLK		- 16 - I2C_SCL (GPIO09)
+- SDIO		- 15 - I2C_SDA (GPIO08)
+
+Audio Switch (SD4066)
+
+- I2S_AUDIO	- 1
+- AUDIO_SWITCH  - GPIO41
+
 
 

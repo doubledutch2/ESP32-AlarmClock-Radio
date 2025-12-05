@@ -1,5 +1,15 @@
 https://github.com/doubledutch2/ESP32-AlarmClock-Radio
-w
+
+I made a number of changes and updated a number of files in the attached git repository. I also added a folder "AlarmSounds". I would like to create an additional webpage (maybe in a new file to reduce complexity), based on the attached code, where I can configure up to 3 Alarms. These alarms can be set to "Once Only", "Weekdays Only", "Weekends Only", "Every Day" for a specific time.
+
+When any of the 3 alarms are triggered, I would either like to play one off the internet Audio Stream, a Radio Station (when the radio model is collected) OR play/loop one of the Alarm Sound mp3 files For every alarm time, I want a test button to hear what ever I selected play on the speakers.
+
+If possible I would like to preload these mp3 files when uploading the code to the ESP32, but I also want to be able to add more alarm mp3 files later. 
+
+With the above logic - I no longer need the buzzer logic so tell me how to remove that.
+
+-------------------
+
 The attached is the repository of code you created previously. Please do not create any new code unless you ask me for link to the specific URLs to files you want to change so we are sure you are updating my code rather that creating it from scratch.  I have updated the following files since you last created code:
 
 AlarmClock.ino
