@@ -28,7 +28,7 @@ void WebServerModule::begin(const char* mdnsName) {
         Serial.println("Error starting mDNS");
     }
     
-    // Setup routes
+    // Setup main routes
     server->on("/", [this]() { handleRoot(); });
     server->on("/stations", [this]() { handleStations(); });
     server->on("/add_station", HTTP_POST, [this]() { handleAddStation(); });
@@ -38,14 +38,38 @@ void WebServerModule::begin(const char* mdnsName) {
     server->on("/play", HTTP_POST, [this]() { handlePlay(); });
     server->onNotFound([this]() { handleNotFound(); });
 
+    Serial.println("Main routes registered");
+    
+    // Setup alarm routes if all required modules are available
     if (storage && audioModule && fmRadioModule) {
+        Serial.println("Creating WebServerAlarms...");
         alarmServer = new WebServerAlarms(server, storage, audioModule, fmRadioModule);
-        alarmServer->setStationList(stationList, stationCount);
+        
+        if (stationList && stationCount > 0) {
+            Serial.printf("Setting station list (%d stations) for alarms\n", stationCount);
+            alarmServer->setStationList(stationList, stationCount);
+        } else {
+            Serial.println("WARNING: No station list available for alarms");
+        }
+        
         alarmServer->setupRoutes();
+        Serial.println("Alarm routes registered");
+    } else {
+        Serial.println("WARNING: WebServerAlarms not created - missing modules:");
+        if (!storage) Serial.println("  - Storage module missing");
+        if (!audioModule) Serial.println("  - Audio module missing");
+        if (!fmRadioModule) Serial.println("  - FM Radio module missing");
     }
     
     server->begin();
     Serial.println("Web server started on port 80");
+    Serial.println("Available routes:");
+    Serial.println("  /               - Main page");
+    Serial.println("  /stations       - Station management");
+    Serial.println("  /settings       - Settings");
+    if (alarmServer) {
+        Serial.println("  /alarms         - Alarm management");
+    }
 }
 
 void WebServerModule::handleClient() {
@@ -389,6 +413,7 @@ String WebServerModule::getMainHTML() {
         <div class="nav">
             <a href="/" class="active">Play</a>
             <a href="/stations">Manage Stations</a>
+            <a href="/alarms">Alarms</a>
             <a href="/settings">Settings</a>
         </div>
         <div class="content">
@@ -479,6 +504,7 @@ String WebServerModule::getStationsHTML() {
         <div class="nav">
             <a href="/">Play</a>
             <a href="/stations" class="active">Manage Stations</a>
+            <a href="/alarms">Alarms</a>
             <a href="/settings">Settings</a>
         </div>
         <div class="content">
@@ -625,6 +651,7 @@ String WebServerModule::getSettingsHTML() {
         <div class="nav">
             <a href="/">Play</a>
             <a href="/stations">Manage Stations</a>
+            <a href="/alarms">Alarms</a>
             <a href="/settings" class="active">Settings</a>
         </div>
         <div class="content">

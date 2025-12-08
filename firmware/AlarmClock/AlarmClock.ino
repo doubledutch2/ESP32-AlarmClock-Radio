@@ -93,23 +93,8 @@ void setup() {
   Serial.println("   ESP32 Alarm Clock Radio");
   Serial.println("====================================\n");
   
-  Serial.println("Going to initialize PSRAM");
-  if (psramInit()) {
-    Serial.print("PSRAM initialized. Total PSRAM size: ");
-    Serial.println(ESP.getPsramSize()); // Total size in bytes
-    Serial.print("Free PSRAM: ");
-    Serial.println(ESP.getFreePsram()); // Free memory in bytes
-  } else {
-    Serial.println("PSRAM not found or not initialized.");
-  }
+  // ... existing PSRAM and heap info code ...
   
-  Serial.printf("LittleFS used: %d bytes", LittleFS.usedBytes());
-
-  // Print heap info
-  Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
-  Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
-  Serial.println();
-
   // Initialize all hardware
   Serial.println("Before hardware setup");
   hardware = new HardwareSetup();
@@ -130,16 +115,17 @@ void setup() {
     hardware->getStorage()
   );
   
-  // Initialize alarm controller
+  // Initialize alarm controller with all required parameters
   alarmController = new AlarmController(
     hardware->getAudio(),
-    hardware->getFMRadio(),      // ADD this parameter
+    hardware->getFMRadio(),
     hardware->getDisplay(),
-    hardware->getStorage()        // ADD this parameter
+    hardware->getStorage()
   );
-
+  
+  // Load alarms from storage
   alarmController->begin();
-
+  
   // Setup state
   alarmState.hour = 7;
   alarmState.minute = 0;
@@ -165,7 +151,7 @@ void setup() {
       hardware->getFMRadio()->setFrequency(freq);
     }
     
-    // Load timezone settings (for future use - requires restart to apply)
+    // Load timezone settings
     long gmtOffset, dstOffset;
     hardware->getStorage()->loadTimezone(gmtOffset, dstOffset);
     Serial.printf("Timezone loaded: GMT offset %ld seconds, DST offset %d seconds\n", 
@@ -177,20 +163,23 @@ void setup() {
   menu->setUIState(&uiState);
   menu->setStationList(stationList, stationCount);
   
-  // Pass storage and time module to web server
+  // CRITICAL: Pass station list and modules to web server AFTER it's created
   if (hardware->getWebServer()) {
-    hardware->getWebServer()->setStorageModule(hardware->getStorage());
-    hardware->getWebServer()->setTimeModule(hardware->getTimeModule());
-    hardware->getWebServer()->setAudioModule(hardware->getAudio());
-    hardware->getWebServer()->setFMRadioModule(hardware->getFMRadio());
+    Serial.println("Configuring web server with station list...");
+    
+    // Set the station list so WebServerAlarms can use it
     hardware->getWebServer()->setStationList(stationList, stationCount);
     
-    // Setup web callback
+    // Setup web callback for custom playback
     hardware->getWebServer()->setPlayCallback([](const char* name, const char* url) {
       if (hardware->getAudio()) {
         hardware->getAudio()->playCustom(name, url);
       }
     });
+    
+    Serial.printf("Web server ready with %d stations\n", stationCount);
+  } else {
+    Serial.println("WARNING: Web server not available!");
   }
   
   // Pass station list to audio module
@@ -204,10 +193,8 @@ void setup() {
   if (hardware->getWiFi()) {
     Serial.printf("  http://%s\n", hardware->getWiFi()->getLocalIP().c_str());
     Serial.printf("  http://%s.local\n", MDNS_NAME);
+    Serial.printf("  http://%s.local/alarms - Alarm Management\n", MDNS_NAME);
   }
-
-
-  
 }
 
 void loop() {

@@ -1,4 +1,6 @@
 #include "AudioModule.h"
+#include <LittleFS.h>
+#include <SD.h>
 
 AudioModule::AudioModule(int bclkPin, int lrcPin, int doutPin, int maxVol, int lastVolume)
     : stations(nullptr), stationCount(0), currentStation(-1), 
@@ -102,7 +104,7 @@ bool AudioModule::playMP3File(const char* filename, bool loop) {
     audio.stopSong();
     delay(100);
     
-    // Construct full path (assuming files are in /mp3/ directory on SD or LittleFS)
+    // Construct full path (assuming files are in /mp3/ directory)
     String fullPath = String("/mp3/") + filename;
     
     Serial.printf("AudioModule: Playing MP3: %s (loop: %s)\n", 
@@ -113,8 +115,24 @@ bool AudioModule::playMP3File(const char* filename, bool loop) {
     currentStationName = "MP3: " + String(filename);
     currentStation = -1;
     
-    // Try to connect to the MP3 file
-    if (audio.connecttoFS(fullPath.c_str())) {
+    // Try LittleFS first, then SD card
+    bool success = false;
+    
+    // Try LittleFS
+    if (LittleFS.exists(fullPath.c_str())) {
+        Serial.println("AudioModule: Found on LittleFS");
+        success = audio.connecttoFS(LittleFS, fullPath.c_str());
+    }
+    // If not on LittleFS, try SD card
+    else if (SD.exists(fullPath.c_str())) {
+        Serial.println("AudioModule: Found on SD card");
+        success = audio.connecttoFS(SD, fullPath.c_str());
+    }
+    else {
+        Serial.println("AudioModule: File not found on LittleFS or SD");
+    }
+    
+    if (success) {
         isPlaying = true;
         isPlayingMP3 = true;
         Serial.println("AudioModule: MP3 file started successfully");

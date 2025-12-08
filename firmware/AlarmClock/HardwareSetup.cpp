@@ -143,21 +143,27 @@ void HardwareSetup::initWebServer() {
     if (ENABLE_WEB && wifi && wifi->isConnected()) {
         webServer = new WebServerModule();
         
-        // IMPORTANT: Set all required modules BEFORE calling begin()
+        // CRITICAL: Set ALL modules BEFORE calling begin()
         if (storage) {
             webServer->setStorageModule(storage);
+            Serial.println("WebServer: Storage module set");
         }
         if (timeModule) {
             webServer->setTimeModule(timeModule);
+            Serial.println("WebServer: Time module set");
         }
         if (audio) {
             webServer->setAudioModule(audio);
+            Serial.println("WebServer: Audio module set");
         }
         if (fmRadio) {
             webServer->setFMRadioModule(fmRadio);
+            Serial.println("WebServer: FM Radio module set");
         }
         
+        // Now call begin() - this will set up WebServerAlarms routes
         webServer->begin(MDNS_NAME);
+        
         if (display) display->drawText(10, 120, "Web: OK", ILI9341_GREEN, 2);
         Serial.printf("Web interface: http://%s.local or http://%s\n", 
                      MDNS_NAME, wifi->getLocalIP().c_str());

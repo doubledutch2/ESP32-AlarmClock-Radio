@@ -162,6 +162,29 @@ String WebServerAlarms::getHTMLHeader() {
             padding: 30px;
             text-align: center;
         }
+        .nav {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .nav a {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            text-decoration: none;
+            color: #495057;
+            font-weight: 600;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        .nav a:hover {
+            background: #e9ecef;
+            color: #667eea;
+        }
+        .nav a.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
         .content {
             padding: 30px;
         }
@@ -288,6 +311,14 @@ String WebServerAlarms::getHTMLFooter() {
 
 String WebServerAlarms::getAlarmsHTML() {
     String html = getHTMLHeader();
+    html += R"html(
+        <div class="nav">
+            <a href="/">Play</a>
+            <a href="/stations">Manage Stations</a>
+            <a href="/alarms" class="active">Alarms</a>
+            <a href="/settings">Settings</a>
+        </div>
+)html";
     html += "<div class='content'>";
     
     // Load and display all alarms
