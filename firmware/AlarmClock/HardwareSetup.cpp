@@ -21,22 +21,33 @@ HardwareSetup::~HardwareSetup() {
 bool HardwareSetup::begin() {
     Serial.println("HW - Init Display");
     initDisplay();
+    
     Serial.println("HW - Init WiFi");
     initWiFi();
+    
     Serial.println("HW - Init Buttons");
     initButtons();
+    
     Serial.println("HW - Init LED");
     initLED();
+    
     Serial.println("HW - Init Storage");
     initStorage();
+    
     Serial.println("HW - Init Time");
     initTime();
-    Serial.println("HW - Init WebServer");
-    initWebServer();
+    
+    // IMPORTANT: Initialize Audio and FM Radio BEFORE WebServer
     Serial.println("HW - Init Audio");
     initAudio();
+    
     Serial.println("HW - Init FMRadio");
     initFMRadio();
+    
+    // NOW initialize WebServer (it needs audio and fmRadio to exist)
+    Serial.println("HW - Init WebServer");
+    initWebServer();
+    
     Serial.println("HW - Init Done");
     
     delay(2000);

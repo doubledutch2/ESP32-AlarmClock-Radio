@@ -148,6 +148,8 @@ They are stored in the SketchDirectory/data/Alarmsounds folder. Use  this tool t
 
 https://randomnerdtutorials.com/arduino-ide-2-install-esp32-littlefs/
 
+When installed use <command><shift><p> and function Upload LittleFS
+
 ## Documentation
 
 - [Wiring Guide](docs/WIRING.md)

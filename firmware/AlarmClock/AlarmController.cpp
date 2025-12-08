@@ -8,17 +8,25 @@ AlarmController::AlarmController(AudioModule* aud, FMRadioModule* fm, DisplayILI
 void AlarmController::begin() {
     // Load all alarms from storage
     if (storage) {
+        Serial.println("=== Loading Alarms from Storage ===");
         for (int i = 0; i < MAX_ALARMS; i++) {
             storage->loadAlarm(i, alarms[i]);
-            Serial.printf("Loaded Alarm %d: %02d:%02d %s\n", 
+            Serial.printf("Alarm %d: %02d:%02d %s, Repeat: %d, Sound: %d\n", 
                          i, alarms[i].hour, alarms[i].minute,
-                         alarms[i].enabled ? "ON" : "OFF");
+                         alarms[i].enabled ? "ENABLED" : "disabled",
+                         alarms[i].repeatMode, alarms[i].soundType);
         }
+        Serial.println("===================================");
+    } else {
+        Serial.println("ERROR: Storage module not available for loading alarms");
     }
 }
 
 void AlarmController::checkAlarms(TimeModule* time) {
-    if (!time) return;
+    if (!time) {
+        Serial.println("ERROR: TimeModule is NULL in checkAlarms");
+        return;
+    }
     
     // Check if snoozed alarm should trigger
     if (alarmIsSnoozed && millis() >= snoozeTime) {
@@ -38,10 +46,32 @@ void AlarmController::checkAlarms(TimeModule* time) {
     // Don't check for new alarms if one is already triggered
     if (alarmIsTriggered) return;
     
+    // Get current time
+    uint8_t currentHour = time->getHour();
+    uint8_t currentMin = time->getMinute();
+    uint8_t currentSec = time->getSecond();
+    
+    // Debug: Print current time every minute at 0 seconds
+    static uint8_t lastDebugMin = 255;
+    if (currentSec == 0 && currentMin != lastDebugMin) {
+        lastDebugMin = currentMin;
+        Serial.printf("Current time: %02d:%02d:%02d, Checking alarms...\n", 
+                     currentHour, currentMin, currentSec);
+        
+        // Show status of all alarms
+        for (int i = 0; i < MAX_ALARMS; i++) {
+            if (alarms[i].enabled) {
+                Serial.printf("  Alarm %d: %02d:%02d (%s)\n", 
+                             i, alarms[i].hour, alarms[i].minute,
+                             alarms[i].enabled ? "ON" : "OFF");
+            }
+        }
+    }
+    
     // Check each alarm
     for (int i = 0; i < MAX_ALARMS; i++) {
         if (shouldAlarmTrigger(i, time)) {
-            Serial.printf("Alarm %d triggered!\n", i);
+            Serial.printf(">>> ALARM %d TRIGGERED! <<<\n", i);
             
             triggeredAlarmIndex = i;
             alarmIsTriggered = true;
@@ -81,7 +111,9 @@ bool AlarmController::shouldAlarmTrigger(int index, TimeModule* time) {
     AlarmConfig& alarm = alarms[index];
     
     // Check if alarm is enabled
-    if (!alarm.enabled) return false;
+    if (!alarm.enabled) {
+        return false;
+    }
     
     // Get current time
     uint8_t currentHour = time->getHour();
@@ -94,16 +126,23 @@ bool AlarmController::shouldAlarmTrigger(int index, TimeModule* time) {
         return false;
     }
     
+    Serial.printf("Time match for Alarm %d! Checking day of week...\n", index);
+    
     // Check if it's the right day of week
     if (!isCorrectDayOfWeek(alarm.repeatMode, dayOfWeek)) {
+        Serial.printf("  Day of week mismatch (current: %d, mode: %d)\n", dayOfWeek, alarm.repeatMode);
         return false;
     }
+    
+    Serial.printf("  Day of week OK. Checking if already triggered today...\n");
     
     // Check if already triggered today (prevents multiple triggers)
     if (hasAlreadyTriggeredToday(index, time)) {
+        Serial.printf("  Already triggered today\n");
         return false;
     }
     
+    Serial.printf("  All checks passed - TRIGGER!\n");
     return true;
 }
 
@@ -172,6 +211,8 @@ void AlarmController::playAlarmSound(int index) {
             if (audio) {
                 Serial.printf("Playing Internet Radio - Station Index: %d\n", alarm.stationIndex);
                 audio->playStation(alarm.stationIndex);
+            } else {
+                Serial.println("ERROR: Audio module not available");
             }
             break;
             
@@ -187,11 +228,18 @@ void AlarmController::playAlarmSound(int index) {
         case SOUND_MP3_FILE:
             if (audio && alarm.mp3File.length() > 0) {
                 Serial.printf("Playing MP3 file: %s (looped)\n", alarm.mp3File.c_str());
-                audio->playMP3File(alarm.mp3File.c_str(), true);  // Loop the MP3
+                if (audio->playMP3File(alarm.mp3File.c_str(), true)) {
+                    Serial.println("MP3 playback started successfully");
+                } else {
+                    Serial.println("ERROR: Failed to play MP3 file");
+                }
             } else {
                 Serial.println("MP3 file not specified or audio not available");
             }
             break;
+            
+        default:
+            Serial.printf("ERROR: Unknown sound type: %d\n", alarm.soundType);
     }
 }
 
