@@ -5,6 +5,7 @@
 #include <Audio.h>
 #include "CommonTypes.h"
 
+
 class AudioModule {
 private:
     Audio audio;
@@ -15,6 +16,9 @@ private:
     int maxVolume;
     String currentStationName;
     bool isPlaying;
+    bool isPlayingMP3;
+    bool shouldLoopMP3;
+    String currentMP3File;
 
 public:
     AudioModule(int bclkPin, int lrcPin, int doutPin, int maxVol = 21, int defaultVolume=0);
@@ -29,6 +33,12 @@ public:
     void playCustom(const char* name, const char* url);
     void stop();
     
+    // MP3 file playback
+    bool playMP3File(const char* filename, bool loop = false);
+    void stopMP3();
+    bool isMP3Playing();
+    String getCurrentMP3File();
+    
     void setVolume(int volume);
     int getCurrentVolume();
     int getMaxVolume();
@@ -39,5 +49,4 @@ public:
     
     bool getIsPlaying();
 };
-
 #endif

@@ -15,6 +15,7 @@ private:
     PlayCallback playCallback;
     StorageModule* storage;
     TimeModule* timeModule;
+    WebServerAlarms* alarmServer;
     
     void handleRoot();
     void handleStations();
@@ -40,6 +41,9 @@ public:
     void setPlayCallback(PlayCallback callback);
     void setStorageModule(StorageModule* stor);
     void setTimeModule(TimeModule* time);
+    void setAudioModule(AudioModule* aud);      
+    void setFMRadioModule(FMRadioModule* fm);   
+    void setStationList(InternetRadioStation* stations, int count);  
 };
 
 #endif

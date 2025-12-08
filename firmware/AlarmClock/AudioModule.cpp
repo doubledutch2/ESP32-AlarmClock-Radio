@@ -2,7 +2,8 @@
 
 AudioModule::AudioModule(int bclkPin, int lrcPin, int doutPin, int maxVol,int lastVolume)
     : stations(nullptr), stationCount(0), currentStation(-1), 
-      currentVolume(lastVolume), maxVolume(maxVol), currentStationName("Unknown"), isPlaying(false) {
+      currentVolume(lastVolume), maxVolume(maxVol), currentStationName("Unknown"), 
+      isPlaying(false), isPlayingMP3(false), shouldLoopMP3(false), currentMP3File("") {
     
     audio.setPinout(bclkPin, lrcPin, doutPin);
 }

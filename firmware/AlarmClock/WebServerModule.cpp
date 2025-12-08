@@ -1,7 +1,8 @@
 #include "WebServerModule.h"
 
 WebServerModule::WebServerModule() 
-    : server(nullptr), playCallback(nullptr), storage(nullptr), timeModule(nullptr) {
+    : server(nullptr), playCallback(nullptr), storage(nullptr), 
+      timeModule(nullptr), alarmServer(nullptr) {  // ADD alarmServer
     server = new WebServer(80);
 }
 
@@ -29,6 +30,12 @@ void WebServerModule::begin(const char* mdnsName) {
     server->on("/save_timezone", HTTP_POST, [this]() { handleSaveTimezone(); });
     server->on("/play", HTTP_POST, [this]() { handlePlay(); });
     server->onNotFound([this]() { handleNotFound(); });
+
+    if (storage && audioModule && fmRadioModule) {
+        alarmServer = new WebServerAlarms(server, storage, audioModule, fmRadioModule);
+        alarmServer->setStationList(stationList, stationCount);
+        alarmServer->setupRoutes();
+    }
     
     server->begin();
     Serial.println("Web server started on port 80");
@@ -155,6 +162,19 @@ void WebServerModule::handlePlay() {
 
 void WebServerModule::handleNotFound() {
     server->send(404, "text/plain", "Not Found");
+}
+
+void WebServerModule::setAudioModule(AudioModule* aud) {
+    audioModule = aud;
+}
+
+void WebServerModule::setFMRadioModule(FMRadioModule* fm) {
+    fmRadioModule = fm;
+}
+
+void WebServerModule::setStationList(InternetRadioStation* stations, int count) {
+    stationList = stations;
+    stationCount = count;
 }
 
 String WebServerModule::getHTMLHeader() {

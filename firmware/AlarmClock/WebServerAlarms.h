@@ -6,6 +6,7 @@
 #include "AudioModule.h"
 #include "FMRadioModule.h"
 #include "AlarmData.h"
+#include "WebServerAlarms.h"
 
 class WebServerAlarms {
 private:
