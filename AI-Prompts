@@ -33,6 +33,24 @@ Alarm Screen: Replace Wifi OK with standard wifi symbol showing the wifi signal 
 "1 - 07:30 - Daily"
 "3 - 21:00 - Once"
 
+- It appears there is logic missing from the AudioModule:
 
+/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/AlarmController.cpp.o:(.literal._ZN15AlarmController14playAlarmSoundEi$part$0+0x18): undefined reference to `_ZN11AudioModule11playMP3FileEPKcb'
+/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/AlarmController.cpp.o: in function `_ZN15AlarmController14playAlarmSoundEi':
+/Users/admin/Documents/Electronics/ArduinoScetches/ESP32-AlarmClock-Radio/firmware/AlarmClock/AlarmController.cpp:190:(.text._ZN15AlarmController14playAlarmSoundEi$part$0+0x6f): undefined reference to `_ZN11AudioModule11playMP3FileEPKcb'
+/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/WebServerModule.cpp.o:(.literal._ZN15WebServerModule5beginEPKc+0x74): undefined reference to `_ZN15WebServerAlarmsC1EP9WebServerP13StorageModuleP11AudioModuleP13FMRadioModule'
+/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/WebServerModule.cpp.o:(.literal._ZN15WebServerModule5beginEPKc+0x78): undefined reference to `_ZN15WebServerAlarms14setStationListEP20InternetRadioStationi'
+/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/WebServerModule.cpp.o:(.literal._ZN15WebServerModule5beginEPKc+0x7c): undefined reference to `_ZN15WebServerAlarms11setupRoutesEv'
+/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/WebServerModule.cpp.o: in function `_ZN15WebServerModule5beginEPKc':
+/Users/admin/Documents/Electronics/ArduinoScetches/ESP32-AlarmClock-Radio/firmware/AlarmClock/WebServerModule.cpp:42:(.text._ZN15WebServerModule5beginEPKc+0x2a2): undefined reference to `_ZN15WebServerAlarmsC1EP9WebServerP13StorageModuleP11AudioModuleP13FMRadioModule'
+/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Documents/Electronics/ArduinoScetches/ESP32-AlarmClock-Radio/firmware/AlarmClock/WebServerModule.cpp:43:(.text._ZN15WebServerModule5beginEPKc+0x2b0): undefined reference to `_ZN15WebServerAlarms14setStationListEP20InternetRadioStationi'
+/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Documents/Electronics/ArduinoScetches/ESP32-AlarmClock-Radio/firmware/AlarmClock/WebServerModule.cpp:44:(.text._ZN15WebServerModule5beginEPKc+0x2b8): undefined reference to `_ZN15WebServerAlarms11setupRoutesEv'
+collect2: error: ld returned 1 exit status
+Multiple libraries were found for "SD.h"
+  Used: /Users/admin/Library/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/SD
+  Not used: /Users/admin/Library/Arduino15/libraries/SD
+exit status 1
+
+Compilation error: exit status 1
 
 

@@ -133,9 +133,13 @@ void setup() {
   // Initialize alarm controller
   alarmController = new AlarmController(
     hardware->getAudio(),
-    hardware->getDisplay()
+    hardware->getFMRadio(),      // ADD this parameter
+    hardware->getDisplay(),
+    hardware->getStorage()        // ADD this parameter
   );
-  
+
+  alarmController->begin();
+
   // Setup state
   alarmState.hour = 7;
   alarmState.minute = 0;
@@ -177,6 +181,9 @@ void setup() {
   if (hardware->getWebServer()) {
     hardware->getWebServer()->setStorageModule(hardware->getStorage());
     hardware->getWebServer()->setTimeModule(hardware->getTimeModule());
+    hardware->getWebServer()->setAudioModule(hardware->getAudio());
+    hardware->getWebServer()->setFMRadioModule(hardware->getFMRadio());
+    hardware->getWebServer()->setStationList(stationList, stationCount);
     
     // Setup web callback
     hardware->getWebServer()->setPlayCallback([](const char* name, const char* url) {
@@ -198,6 +205,9 @@ void setup() {
     Serial.printf("  http://%s\n", hardware->getWiFi()->getLocalIP().c_str());
     Serial.printf("  http://%s.local\n", MDNS_NAME);
   }
+
+
+  
 }
 
 void loop() {
@@ -232,7 +242,6 @@ void loop() {
   }
   
   // Check alarm
-  alarmController->checkAlarm(&alarmState, hardware->getTimeModule());
-  
+  alarmController->checkAlarms(hardware->getTimeModule());
   delay(1);
 }

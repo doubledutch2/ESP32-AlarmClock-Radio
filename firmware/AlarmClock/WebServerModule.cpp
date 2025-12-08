@@ -1,12 +1,19 @@
 #include "WebServerModule.h"
+#include "AudioModule.h"
+#include "FMRadioModule.h"
+#include "WebServerAlarms.h"
 
 WebServerModule::WebServerModule() 
     : server(nullptr), playCallback(nullptr), storage(nullptr), 
-      timeModule(nullptr), alarmServer(nullptr) {  // ADD alarmServer
+      timeModule(nullptr), audioModule(nullptr), fmRadioModule(nullptr),
+      stationList(nullptr), stationCount(0), alarmServer(nullptr) {
     server = new WebServer(80);
 }
 
 WebServerModule::~WebServerModule() {
+    if (alarmServer) {
+        delete alarmServer;
+    }
     if (server) {
         delete server;
     }
@@ -57,6 +64,19 @@ void WebServerModule::setStorageModule(StorageModule* stor) {
 
 void WebServerModule::setTimeModule(TimeModule* time) {
     timeModule = time;
+}
+
+void WebServerModule::setAudioModule(AudioModule* aud) {
+    audioModule = aud;
+}
+
+void WebServerModule::setFMRadioModule(FMRadioModule* fm) {
+    fmRadioModule = fm;
+}
+
+void WebServerModule::setStationList(InternetRadioStation* stations, int count) {
+    stationList = stations;
+    stationCount = count;
 }
 
 void WebServerModule::handleRoot() {
@@ -162,19 +182,6 @@ void WebServerModule::handlePlay() {
 
 void WebServerModule::handleNotFound() {
     server->send(404, "text/plain", "Not Found");
-}
-
-void WebServerModule::setAudioModule(AudioModule* aud) {
-    audioModule = aud;
-}
-
-void WebServerModule::setFMRadioModule(FMRadioModule* fm) {
-    fmRadioModule = fm;
-}
-
-void WebServerModule::setStationList(InternetRadioStation* stations, int count) {
-    stationList = stations;
-    stationCount = count;
 }
 
 String WebServerModule::getHTMLHeader() {

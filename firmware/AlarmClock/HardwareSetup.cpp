@@ -143,12 +143,18 @@ void HardwareSetup::initWebServer() {
     if (ENABLE_WEB && wifi && wifi->isConnected()) {
         webServer = new WebServerModule();
         
-        // IMPORTANT: Set storage and time module BEFORE calling begin()
+        // IMPORTANT: Set all required modules BEFORE calling begin()
         if (storage) {
             webServer->setStorageModule(storage);
         }
         if (timeModule) {
             webServer->setTimeModule(timeModule);
+        }
+        if (audio) {
+            webServer->setAudioModule(audio);
+        }
+        if (fmRadio) {
+            webServer->setFMRadioModule(fmRadio);
         }
         
         webServer->begin(MDNS_NAME);

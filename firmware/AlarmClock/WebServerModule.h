@@ -5,6 +5,12 @@
 #include <ESPmDNS.h>
 #include "StorageModule.h"
 #include "TimeModule.h"
+#include "CommonTypes.h"
+
+// Forward declarations
+class AudioModule;
+class FMRadioModule;
+class WebServerAlarms;
 
 // Callback type for playing custom stations
 typedef void (*PlayCallback)(const char* name, const char* url);
@@ -15,6 +21,10 @@ private:
     PlayCallback playCallback;
     StorageModule* storage;
     TimeModule* timeModule;
+    AudioModule* audioModule;
+    FMRadioModule* fmRadioModule;
+    InternetRadioStation* stationList;
+    int stationCount;
     WebServerAlarms* alarmServer;
     
     void handleRoot();

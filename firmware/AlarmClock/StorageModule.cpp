@@ -274,3 +274,47 @@ void StorageModule::factoryReset() {
     
     Serial.println("Factory reset complete");
 }
+
+bool StorageModule::saveAlarm(int index, const AlarmConfig& alarm) {
+    if (!isInitialized || index < 0 || index >= MAX_ALARMS) return false;
+    
+    char prefix[16];
+    sprintf(prefix, "alm_%d_", index);
+    
+    prefs.putBool((String(prefix) + "en").c_str(), alarm.enabled);
+    prefs.putUChar((String(prefix) + "h").c_str(), alarm.hour);
+    prefs.putUChar((String(prefix) + "m").c_str(), alarm.minute);
+    prefs.putUChar((String(prefix) + "rep").c_str(), (uint8_t)alarm.repeatMode);
+    prefs.putUChar((String(prefix) + "snd").c_str(), (uint8_t)alarm.soundType);
+    prefs.putInt((String(prefix) + "idx").c_str(), alarm.stationIndex);
+    prefs.putFloat((String(prefix) + "fm").c_str(), alarm.fmFrequency);
+    prefs.putString((String(prefix) + "mp3").c_str(), alarm.mp3File);
+    prefs.putUShort((String(prefix) + "yr").c_str(), alarm.lastYear);
+    prefs.putUChar((String(prefix) + "mon").c_str(), alarm.lastMonth);
+    prefs.putUChar((String(prefix) + "day").c_str(), alarm.lastDay);
+    
+    Serial.printf("Saved Alarm %d: %02d:%02d %s\n", 
+                  index, alarm.hour, alarm.minute, alarm.enabled ? "ON" : "OFF");
+    return true;
+}
+
+bool StorageModule::loadAlarm(int index, AlarmConfig& alarm) {
+    if (!isInitialized || index < 0 || index >= MAX_ALARMS) return false;
+    
+    char prefix[16];
+    sprintf(prefix, "alm_%d_", index);
+    
+    alarm.enabled = prefs.getBool((String(prefix) + "en").c_str(), false);
+    alarm.hour = prefs.getUChar((String(prefix) + "h").c_str(), 7);
+    alarm.minute = prefs.getUChar((String(prefix) + "m").c_str(), 0);
+    alarm.repeatMode = (AlarmRepeat)prefs.getUChar((String(prefix) + "rep").c_str(), ALARM_DAILY);
+    alarm.soundType = (AlarmSoundType)prefs.getUChar((String(prefix) + "snd").c_str(), SOUND_INTERNET_RADIO);
+    alarm.stationIndex = prefs.getInt((String(prefix) + "idx").c_str(), 0);
+    alarm.fmFrequency = prefs.getFloat((String(prefix) + "fm").c_str(), 98.0);
+    alarm.mp3File = prefs.getString((String(prefix) + "mp3").c_str(), "");
+    alarm.lastYear = prefs.getUShort((String(prefix) + "yr").c_str(), 0);
+    alarm.lastMonth = prefs.getUChar((String(prefix) + "mon").c_str(), 0);
+    alarm.lastDay = prefs.getUChar((String(prefix) + "day").c_str(), 0);
+    
+    return true;
+}

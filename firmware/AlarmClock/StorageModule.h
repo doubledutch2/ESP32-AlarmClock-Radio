@@ -4,6 +4,7 @@
 #include <Preferences.h>
 #include <LittleFS.h>
 #include "CommonTypes.h"
+#include "AlarmData.h"
 
 #define MAX_STATIONS 20
 #define MAX_INTERNET_STATIONS 10
@@ -25,6 +26,10 @@ public:
     // Config management using NVS (Preferences)
     bool saveConfig(uint8_t alarmHour, uint8_t alarmMin, bool alarmEnabled, float fmFreq);
     bool loadConfig(uint8_t &alarmHour, uint8_t &alarmMin, bool &alarmEnabled, float &fmFreq);
+    
+    // Alarm management using NVS
+    bool saveAlarm(int index, const AlarmConfig& alarm);
+    bool loadAlarm(int index, AlarmConfig& alarm);
     
     // FM Station management using LittleFS
     bool saveFMStations();
