@@ -74,21 +74,21 @@ Pin Assignments ESP32
 
 12 - TFT_MISO
 
-13 - TFT_SCLK
+13 - 
 
 14 - 
 
 15 - I2S_BCLK
 
-16 - I2S_DOUT_L
+16 - I2S_DOUT
 
-17 - I2S_DOUT_R
+17 - MODE_SWITCH_PIN
 
-18 - Reserved
+18 - [Reserved] ?????
 
-19 - USB D- (Do not Use)
+19 - [Reserved] USB D- (Do not Use)
 
-20 - USB D+ (Do not Use)
+20 - [Reserved] USB D+ (Do not Use)
 
 21 - TFT_RST
 
