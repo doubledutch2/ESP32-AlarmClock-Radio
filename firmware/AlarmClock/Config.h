@@ -25,7 +25,6 @@
 // uint8_t rdaAddresses[] = {0x10, 0x11, 0};
 
 // I2S Audio pins (for Internet Radio via MAX98357A)
-// STEREO: Use two MAX98357A amplifiers
 #define I2S_LRC          7   // Word Select (shared for both amps)
 #define I2S_BCLK         15  // Bit Clock (shared for both amps)
 #define I2S_DOUT         16  // Data Out LEFT channel (to first MAX98357A)
@@ -42,9 +41,16 @@
 // Control pins
 #define VOL_PIN          1   // ADC for volume potentiometer
 #define LED_PIN          48  // RGB LED (built-in on DevKitC)
-#define BRIGHTNESS_PIN   42 // 38  // Brightness button
-#define NEXT_STATION_PIN 42 // 39  // Next station button
-#define MODE_SWITCH_PIN  42  // Switch between Internet/FM radio
+#define BRIGHTNESS_PIN   38  // 42 Brightness button
+#define NEXT_STATION_PIN 39 // 42  // Next station button
+
+// Switch pin for TS5A3159
+// The Mode_Switch_Pin is connected to the IN Pin. 
+// If it's HIGH NC = connected to COM
+// If it's LOW  NO = connected to COM
+
+
+#define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio
 
 // FM Radio pins (only used if ENABLE_FM_RADIO is true)
 #if ENABLE_FM_RADIO

@@ -11,6 +11,7 @@
 class AudioModule;
 class FMRadioModule;
 class WebServerAlarms;
+class AlarmController;
 
 // Callback type for playing custom stations
 typedef void (*PlayCallback)(const char* name, const char* url);
@@ -26,6 +27,7 @@ private:
     InternetRadioStation* stationList;
     int stationCount;
     WebServerAlarms* alarmServer;
+    AlarmController* alarmController;  // NEW: Reference to alarm controller
     
     void handleRoot();
     void handleStations();
@@ -54,6 +56,7 @@ public:
     void setAudioModule(AudioModule* aud);      
     void setFMRadioModule(FMRadioModule* fm);   
     void setStationList(InternetRadioStation* stations, int count);  
+    void setAlarmController(AlarmController* ctrl); // Mine
 };
 
 #endif

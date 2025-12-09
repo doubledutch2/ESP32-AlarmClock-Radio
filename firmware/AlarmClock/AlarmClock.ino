@@ -93,8 +93,21 @@ void setup() {
   Serial.println("   ESP32 Alarm Clock Radio");
   Serial.println("====================================\n");
   
-  // ... existing PSRAM and heap info code ...
+  Serial.println("Going to initialize PSRAM");
+  if (psramInit()) {
+    Serial.print("PSRAM initialized. Total PSRAM size: ");
+    Serial.println(ESP.getPsramSize());
+    Serial.print("Free PSRAM: ");
+    Serial.println(ESP.getFreePsram());
+  } else {
+    Serial.println("PSRAM not found or not initialized.");
+  }
   
+  Serial.printf("LittleFS used: %d bytes\n", LittleFS.usedBytes());
+  Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
+  Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
+  Serial.println();
+
   // Initialize all hardware
   Serial.println("Before hardware setup");
   hardware = new HardwareSetup();
@@ -102,6 +115,11 @@ void setup() {
     Serial.println("Hardware initialization failed!");
     while(1) delay(1000);
   }
+
+  // Initialize the MODE_SWITCH_PIN pin so it connectes to the NO (IN=LOW)
+
+  pinMode(MODE_SWITCH_PIN, OUTPUT);
+  digitalWrite(MODE_SWITCH_PIN, LOW);
 
   // Load stations from storage (must be done AFTER hardware init)
   loadStationsFromStorage();
@@ -116,6 +134,7 @@ void setup() {
   );
   
   // Initialize alarm controller with all required parameters
+  Serial.println("Creating AlarmController...");
   alarmController = new AlarmController(
     hardware->getAudio(),
     hardware->getFMRadio(),
@@ -123,8 +142,10 @@ void setup() {
     hardware->getStorage()
   );
   
-  // Load alarms from storage
+  // CRITICAL: Load alarms from storage
+  Serial.println("Loading alarms from storage...");
   alarmController->begin();
+  Serial.println("Alarms loaded.");
   
   // Setup state
   alarmState.hour = 7;
@@ -151,7 +172,7 @@ void setup() {
       hardware->getFMRadio()->setFrequency(freq);
     }
     
-    // Load timezone settings
+    // Load timezone settings (for future use - requires restart to apply)
     long gmtOffset, dstOffset;
     hardware->getStorage()->loadTimezone(gmtOffset, dstOffset);
     Serial.printf("Timezone loaded: GMT offset %ld seconds, DST offset %d seconds\n", 
@@ -163,14 +184,15 @@ void setup() {
   menu->setUIState(&uiState);
   menu->setStationList(stationList, stationCount);
   
-  // CRITICAL: Pass station list and modules to web server AFTER it's created
+  // Pass storage and time module to web server
   if (hardware->getWebServer()) {
     Serial.println("Configuring web server with station list...");
-    
-    // Set the station list so WebServerAlarms can use it
     hardware->getWebServer()->setStationList(stationList, stationCount);
     
-    // Setup web callback for custom playback
+    // CRITICAL: Pass AlarmController reference so web can reload alarms
+    hardware->getWebServer()->setAlarmController(alarmController);
+    
+    // Setup web callback
     hardware->getWebServer()->setPlayCallback([](const char* name, const char* url) {
       if (hardware->getAudio()) {
         hardware->getAudio()->playCustom(name, url);
@@ -178,8 +200,6 @@ void setup() {
     });
     
     Serial.printf("Web server ready with %d stations\n", stationCount);
-  } else {
-    Serial.println("WARNING: Web server not available!");
   }
   
   // Pass station list to audio module
@@ -195,11 +215,15 @@ void setup() {
     Serial.printf("  http://%s.local\n", MDNS_NAME);
     Serial.printf("  http://%s.local/alarms - Alarm Management\n", MDNS_NAME);
   }
+  
+  Serial.println("\n*** System Ready - Monitoring for alarms ***\n");
 }
 
 void loop() {
   static unsigned long lastUpdate = 0;
   unsigned long now = millis();
+  // static boolean  pinHigh = false;
+  // static int      pinCounter = 0;
   
   yield();
 
@@ -227,7 +251,25 @@ void loop() {
     lastUpdate = now;
     uiState.needsRedraw = false;
   }
-  
+
+  // Play with the MODE_SWITCH_PIN
+  /*
+  if (pinCounter == 1000) {
+    if (pinHigh) {
+      digitalWrite(MODE_SWITCH_PIN, LOW);
+      Serial.println("Set Mode Switch Pin: Low");
+      pinHigh = false;
+    }
+    else {
+      digitalWrite(MODE_SWITCH_PIN,HIGH);
+      Serial.println("Set Mode Switch Pin: High");
+      pinHigh = true;
+    }
+    pinCounter = 0;
+  }
+  pinCounter++;
+  */
+
   // Check alarm
   alarmController->checkAlarms(hardware->getTimeModule());
   delay(1);

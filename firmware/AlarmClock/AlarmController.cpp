@@ -22,6 +22,22 @@ void AlarmController::begin() {
     }
 }
 
+void AlarmController::reloadAlarms() {
+    Serial.println("=== Reloading Alarms from Storage ===");
+    if (storage) {
+        for (int i = 0; i < MAX_ALARMS; i++) {
+            storage->loadAlarm(i, alarms[i]);
+            Serial.printf("Alarm %d: %02d:%02d %s, Repeat: %d, Sound: %d\n", 
+                         i, alarms[i].hour, alarms[i].minute,
+                         alarms[i].enabled ? "ENABLED" : "disabled",
+                         alarms[i].repeatMode, alarms[i].soundType);
+        }
+        Serial.println("===================================");
+    } else {
+        Serial.println("ERROR: Storage module not available");
+    }
+}
+
 void AlarmController::checkAlarms(TimeModule* time) {
     if (!time) {
         Serial.println("ERROR: TimeModule is NULL in checkAlarms");
@@ -55,17 +71,23 @@ void AlarmController::checkAlarms(TimeModule* time) {
     static uint8_t lastDebugMin = 255;
     if (currentSec == 0 && currentMin != lastDebugMin) {
         lastDebugMin = currentMin;
-        Serial.printf("Current time: %02d:%02d:%02d, Checking alarms...\n", 
+        Serial.printf("=== Current time: %02d:%02d:%02d ===\n", 
                      currentHour, currentMin, currentSec);
         
         // Show status of all alarms
         for (int i = 0; i < MAX_ALARMS; i++) {
-            if (alarms[i].enabled) {
-                Serial.printf("  Alarm %d: %02d:%02d (%s)\n", 
-                             i, alarms[i].hour, alarms[i].minute,
-                             alarms[i].enabled ? "ON" : "OFF");
-            }
+            Serial.printf("  Alarm %d: %02d:%02d %s (Repeat:%d, Sound:%d, LastTrig:%04d-%02d-%02d)\n", 
+                         i, 
+                         alarms[i].hour, 
+                         alarms[i].minute,
+                         alarms[i].enabled ? "ENABLED" : "disabled",
+                         alarms[i].repeatMode,
+                         alarms[i].soundType,
+                         alarms[i].lastYear,
+                         alarms[i].lastMonth,
+                         alarms[i].lastDay);
         }
+        Serial.println("=================================");
     }
     
     // Check each alarm

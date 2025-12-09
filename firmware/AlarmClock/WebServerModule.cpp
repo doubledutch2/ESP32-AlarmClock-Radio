@@ -1,12 +1,13 @@
 #include "WebServerModule.h"
 #include "AudioModule.h"
 #include "FMRadioModule.h"
+#include "AlarmController.h"
 #include "WebServerAlarms.h"
 
 WebServerModule::WebServerModule() 
     : server(nullptr), playCallback(nullptr), storage(nullptr), 
       timeModule(nullptr), audioModule(nullptr), fmRadioModule(nullptr),
-      stationList(nullptr), stationCount(0), alarmServer(nullptr) {
+      stationList(nullptr), stationCount(0), alarmServer(nullptr), alarmController(nullptr) {
     server = new WebServer(80);
 }
 
@@ -101,6 +102,16 @@ void WebServerModule::setFMRadioModule(FMRadioModule* fm) {
 void WebServerModule::setStationList(InternetRadioStation* stations, int count) {
     stationList = stations;
     stationCount = count;
+}
+
+void WebServerModule::setAlarmController(AlarmController* ctrl) {
+    alarmController = ctrl;
+    Serial.println("WebServerModule: AlarmController reference set");
+    
+    // If alarmServer already exists, pass it the reference
+    if (alarmServer && alarmController) {
+        alarmServer->setAlarmController(alarmController);
+    }
 }
 
 void WebServerModule::handleRoot() {

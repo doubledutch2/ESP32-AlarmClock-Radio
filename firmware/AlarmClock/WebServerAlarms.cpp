@@ -1,8 +1,9 @@
 #include "WebServerAlarms.h"
+#include "AlarmController.h"
 #include <LittleFS.h>
 
 WebServerAlarms::WebServerAlarms(WebServer* srv, StorageModule* stor, AudioModule* aud, FMRadioModule* fm)
-    : server(srv), storage(stor), audio(aud), fmRadio(fm), stationList(nullptr), stationCount(0) {
+    : server(srv), storage(stor), audio(aud), fmRadio(fm), alarmController(nullptr), stationList(nullptr), stationCount(0) {
 }
 
 void WebServerAlarms::setStationList(InternetRadioStation* stations, int count) {
@@ -10,15 +11,45 @@ void WebServerAlarms::setStationList(InternetRadioStation* stations, int count) 
     stationCount = count;
 }
 
+void WebServerAlarms::setAlarmController(AlarmController* ctrl) {
+    alarmController = ctrl;
+    Serial.println("WebServerAlarms: AlarmController reference set");
+}
+
 void WebServerAlarms::setupRoutes() {
-    if (!server) return;
+    if (!server) {
+        Serial.println("ERROR: WebServerAlarms::setupRoutes() - server is NULL!");
+        return;
+    }
     
-    server->on("/alarms", [this]() { handleAlarms(); });
-    server->on("/save_alarm", HTTP_POST, [this]() { handleSaveAlarm(); });
-    server->on("/test_alarm", HTTP_POST, [this]() { handleTestAlarm(); });
-    server->on("/list_mp3", [this]() { handleListMP3(); });
+    Serial.println("WebServerAlarms::setupRoutes() - Registering routes...");
     
-    Serial.println("WebServerAlarms: Routes registered");
+    // Register the /alarms route
+    server->on("/alarms", HTTP_GET, [this]() { 
+        Serial.println("GET /alarms called");
+        handleAlarms(); 
+    });
+    
+    server->on("/save_alarm", HTTP_POST, [this]() { 
+        Serial.println("POST /save_alarm called");
+        handleSaveAlarm(); 
+    });
+    
+    server->on("/test_alarm", HTTP_POST, [this]() { 
+        Serial.println("POST /test_alarm called");
+        handleTestAlarm(); 
+    });
+    
+    server->on("/list_mp3", HTTP_GET, [this]() { 
+        Serial.println("GET /list_mp3 called");
+        handleListMP3(); 
+    });
+    
+    Serial.println("WebServerAlarms routes registered:");
+    Serial.println("  - GET  /alarms");
+    Serial.println("  - POST /save_alarm");
+    Serial.println("  - POST /test_alarm");
+    Serial.println("  - GET  /list_mp3");
 }
 
 void WebServerAlarms::handleAlarms() {
@@ -57,6 +88,17 @@ void WebServerAlarms::handleSaveAlarm() {
     alarm.lastDay = existing.lastDay;
     
     if (storage->saveAlarm(index, alarm)) {
+        Serial.printf("Saved Alarm %d: %02d:%02d %s\n", 
+                     index, alarm.hour, alarm.minute, 
+                     alarm.enabled ? "ON" : "OFF");
+        
+        // CRITICAL: Reload alarms in AlarmController
+        if (alarmController) {
+            alarmController->reloadAlarms();
+        } else {
+            Serial.println("WARNING: AlarmController not available, memory not updated!");
+        }
+        
         server->send(200, "text/plain", "Alarm saved successfully");
     } else {
         server->send(500, "text/plain", "Failed to save alarm");
@@ -117,6 +159,10 @@ void WebServerAlarms::handleListMP3() {
             while (file) {
                 if (!file.isDirectory()) {
                     String name = String(file.name());
+                    // Remove the /mp3/ prefix if present
+                    if (name.startsWith("/mp3/")) {
+                        name = name.substring(5);
+                    }
                     if (name.endsWith(".mp3") || name.endsWith(".MP3")) {
                         if (!first) json += ",";
                         json += "\"" + name + "\"";
@@ -130,6 +176,38 @@ void WebServerAlarms::handleListMP3() {
     
     json += "]";
     server->send(200, "application/json", json);
+}
+
+// Helper function to get MP3 files list for dropdown
+String WebServerAlarms::getMP3FilesList() {
+    String options = "";
+    
+    if (LittleFS.begin()) {
+        File root = LittleFS.open("/mp3");
+        if (root && root.isDirectory()) {
+            File file = root.openNextFile();
+            
+            while (file) {
+                if (!file.isDirectory()) {
+                    String name = String(file.name());
+                    // Remove the /mp3/ prefix if present
+                    if (name.startsWith("/mp3/")) {
+                        name = name.substring(5);
+                    }
+                    if (name.endsWith(".mp3") || name.endsWith(".MP3")) {
+                        options += "<option value='" + name + "'>" + name + "</option>";
+                    }
+                }
+                file = root.openNextFile();
+            }
+        }
+    }
+    
+    if (options.length() == 0) {
+        options = "<option value=''>No MP3 files found</option>";
+    }
+    
+    return options;
 }
 
 String WebServerAlarms::getHTMLHeader() {
@@ -393,7 +471,26 @@ String WebServerAlarms::getAlarmsHTML() {
         html += "<div id='mp3Options_" + String(i) + "' class='form-group' style='display:" + 
                 String(alarm.soundType == SOUND_MP3_FILE ? "block" : "none") + "'>";
         html += "<label>MP3 File</label>";
-        html += "<input type='text' id='mp3File_" + String(i) + "' value='" + alarm.mp3File + "' placeholder='alarm.mp3'>";
+        html += "<select id='mp3File_" + String(i) + "'>";
+        
+        // Get list of MP3 files
+        String mp3Files = getMP3FilesList();
+        
+        // If current alarm has an MP3 file selected, mark it as selected
+        if (alarm.mp3File.length() > 0 && mp3Files.indexOf(alarm.mp3File) > 0) {
+            // Replace the matching option with selected version
+            String searchStr = "value='" + alarm.mp3File + "'";
+            String replaceStr = "value='" + alarm.mp3File + "' selected";
+            mp3Files.replace(searchStr, replaceStr);
+        }
+        
+        html += mp3Files;
+        html += "</select>";
+        
+        // Add a note about where to place MP3 files
+        html += "<small style='color: #6c757d; display: block; margin-top: 5px;'>";
+        html += "📁 Place MP3 files in /mp3/ directory on LittleFS";
+        html += "</small>";
         html += "</div>";
         
         html += "<button class='btn-primary' onclick='saveAlarm(" + String(i) + ")'>💾 Save</button>";
@@ -425,10 +522,19 @@ String WebServerAlarms::getAlarmsHTML() {
                 
                 if (soundType == '0') {
                     params += '&stationIndex=' + document.getElementById('station_' + index).value;
+                    params += '&stationIndex=0&fmFreq=98.0&mp3File=';
                 } else if (soundType == '1') {
                     params += '&fmFreq=' + document.getElementById('fmFreq_' + index).value;
+                    params += '&stationIndex=0&mp3File=';
                 } else if (soundType == '2') {
-                    params += '&mp3File=' + encodeURIComponent(document.getElementById('mp3File_' + index).value);
+                    const mp3Select = document.getElementById('mp3File_' + index);
+                    if (mp3Select.value) {
+                        params += '&mp3File=' + encodeURIComponent(mp3Select.value);
+                    } else {
+                        alert('Please select an MP3 file or upload one to /mp3/ directory');
+                        return;
+                    }
+                    params += '&stationIndex=0&fmFreq=98.0';
                 }
                 
                 fetch('/save_alarm', {
@@ -453,7 +559,13 @@ String WebServerAlarms::getAlarmsHTML() {
                 } else if (soundType == '1') {
                     params += '&fmFreq=' + document.getElementById('fmFreq_' + index).value;
                 } else if (soundType == '2') {
-                    params += '&mp3File=' + encodeURIComponent(document.getElementById('mp3File_' + index).value);
+                    const mp3Select = document.getElementById('mp3File_' + index);
+                    if (mp3Select.value) {
+                        params += '&mp3File=' + encodeURIComponent(mp3Select.value);
+                    } else {
+                        alert('Please select an MP3 file');
+                        return;
+                    }
                 }
                 
                 fetch('/test_alarm', {

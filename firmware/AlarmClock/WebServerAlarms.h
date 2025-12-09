@@ -6,7 +6,10 @@
 #include "AudioModule.h"
 #include "FMRadioModule.h"
 #include "AlarmData.h"
-#include "WebServerAlarms.h"
+#include "CommonTypes.h"
+
+// Forward declaration
+class AlarmController;
 
 class WebServerAlarms {
 private:
@@ -14,6 +17,7 @@ private:
     StorageModule* storage;
     AudioModule* audio;
     FMRadioModule* fmRadio;
+    AlarmController* alarmController;  // NEW: Reference to alarm controller
     InternetRadioStation* stationList;
     int stationCount;
     
@@ -22,15 +26,17 @@ private:
     void handleTestAlarm();
     void handleListMP3();
     
-    String getAlarmsHTML();
     String getHTMLHeader();
     String getHTMLFooter();
+    String getAlarmsHTML();
+    String getMP3FilesList();  // NEW: Get list of MP3 files for dropdown
 
 public:
     WebServerAlarms(WebServer* srv, StorageModule* stor, AudioModule* aud, FMRadioModule* fm);
     
-    void setStationList(InternetRadioStation* stations, int count);
     void setupRoutes();
+    void setStationList(InternetRadioStation* stations, int count);
+    void setAlarmController(AlarmController* ctrl);  // NEW: Set alarm controller reference
 };
 
 #endif
