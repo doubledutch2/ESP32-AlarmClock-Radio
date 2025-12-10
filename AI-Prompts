@@ -11,13 +11,6 @@ With the above logic - I no longer need the buzzer logic so tell me how to remov
 -------------------
 - For the VOL_PIN - when rebooting the ESP32, sometime you need to turn the potentiometer clockwise to turn up the volume, other times you need to turn it any-clockwise. Some suggested that instead of relying only on the basic analogRead(), you should explicitly configure the specific ADC unit (ADC1 or ADC2) and its attenuation. This ensures a consistent setup on every boot.
    
-- The attached is the repository of code you created previously. Please do not create any new code unless you ask me for link to the specific URLs to files you want to change so we are sure you are updating my code rather that creating it from scratch.  I have updated the following files since you last created code:
-
-AlarmClock.ino
-Config.h 
-StorageModule.h 
-WebServerModule.cpp
-
 - Instead of press-buttons, can we use the Touch Screen interface instead to change settings releasing the relevant GPIO Pins for the TFT screen. I have big fingers so don't make the buttons too small
 
 - All settings which can be changed on the TFT screen.  The Webportal should also availabe as a WiFi access point to configure the WiFi Access credentials
@@ -33,24 +26,5 @@ Alarm Screen: Replace Wifi OK with standard wifi symbol showing the wifi signal 
 "1 - 07:30 - Daily"
 "3 - 21:00 - Once"
 
-- It appears there is logic missing from the AudioModule:
-
-/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/AlarmController.cpp.o:(.literal._ZN15AlarmController14playAlarmSoundEi$part$0+0x18): undefined reference to `_ZN11AudioModule11playMP3FileEPKcb'
-/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/AlarmController.cpp.o: in function `_ZN15AlarmController14playAlarmSoundEi':
-/Users/admin/Documents/Electronics/ArduinoScetches/ESP32-AlarmClock-Radio/firmware/AlarmClock/AlarmController.cpp:190:(.text._ZN15AlarmController14playAlarmSoundEi$part$0+0x6f): undefined reference to `_ZN11AudioModule11playMP3FileEPKcb'
-/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/WebServerModule.cpp.o:(.literal._ZN15WebServerModule5beginEPKc+0x74): undefined reference to `_ZN15WebServerAlarmsC1EP9WebServerP13StorageModuleP11AudioModuleP13FMRadioModule'
-/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/WebServerModule.cpp.o:(.literal._ZN15WebServerModule5beginEPKc+0x78): undefined reference to `_ZN15WebServerAlarms14setStationListEP20InternetRadioStationi'
-/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/WebServerModule.cpp.o:(.literal._ZN15WebServerModule5beginEPKc+0x7c): undefined reference to `_ZN15WebServerAlarms11setupRoutesEv'
-/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Library/Caches/arduino/sketches/EDD3E7C26187E26B7CC789FAD5C363FC/sketch/WebServerModule.cpp.o: in function `_ZN15WebServerModule5beginEPKc':
-/Users/admin/Documents/Electronics/ArduinoScetches/ESP32-AlarmClock-Radio/firmware/AlarmClock/WebServerModule.cpp:42:(.text._ZN15WebServerModule5beginEPKc+0x2a2): undefined reference to `_ZN15WebServerAlarmsC1EP9WebServerP13StorageModuleP11AudioModuleP13FMRadioModule'
-/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Documents/Electronics/ArduinoScetches/ESP32-AlarmClock-Radio/firmware/AlarmClock/WebServerModule.cpp:43:(.text._ZN15WebServerModule5beginEPKc+0x2b0): undefined reference to `_ZN15WebServerAlarms14setStationListEP20InternetRadioStationi'
-/Users/admin/Library/Arduino15/packages/esp32/tools/esp-x32/2507/bin/../lib/gcc/xtensa-esp-elf/14.2.0/../../../../xtensa-esp-elf/bin/ld: /Users/admin/Documents/Electronics/ArduinoScetches/ESP32-AlarmClock-Radio/firmware/AlarmClock/WebServerModule.cpp:44:(.text._ZN15WebServerModule5beginEPKc+0x2b8): undefined reference to `_ZN15WebServerAlarms11setupRoutesEv'
-collect2: error: ld returned 1 exit status
-Multiple libraries were found for "SD.h"
-  Used: /Users/admin/Library/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/SD
-  Not used: /Users/admin/Library/Arduino15/libraries/SD
-exit status 1
-
-Compilation error: exit status 1
 
 

@@ -38,6 +38,9 @@
 #define TFT_RST          21  
 #define TFT_BL           47  // Backlight PWM
 
+#define TOUCH_CS         13
+#define TOUCH_IRQ        2
+
 // Control pins
 #define VOL_PIN          1   // ADC for volume potentiometer
 #define LED_PIN          48  // RGB LED (built-in on DevKitC)
