@@ -10,6 +10,7 @@
 #include "AudioModule.h"
 #include "WebServerModule.h"
 #include "LEDModule.h"
+#include "TouchScreenModule.h"  // NEW
 
 class HardwareSetup {
 private:
@@ -21,6 +22,7 @@ private:
     AudioModule* audio;
     WebServerModule* webServer;
     LEDModule* led;
+    TouchScreenModule* touchScreen;  // NEW
     
     int lastVolumePotValue;
     uint8_t brightnessLevel;
@@ -41,6 +43,7 @@ public:
     AudioModule* getAudio() { return audio; }
     WebServerModule* getWebServer() { return webServer; }
     LEDModule* getLED() { return led; }
+    TouchScreenModule* getTouchScreen() { return touchScreen; }  // NEW
     
 private:
     void initButtons();
@@ -52,6 +55,7 @@ private:
     void initAudio();
     void initFMRadio();
     void initLED();
+    void initTouchScreen();  // NEW
     
     void handleVolumeControl();
     void handleBrightnessButton();

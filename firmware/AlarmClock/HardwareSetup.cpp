@@ -3,7 +3,7 @@
 HardwareSetup::HardwareSetup() 
     : display(nullptr), timeModule(nullptr), fmRadio(nullptr), 
       storage(nullptr), wifi(nullptr), 
-      audio(nullptr), webServer(nullptr), led(nullptr),
+      audio(nullptr), webServer(nullptr), led(nullptr), touchScreen(nullptr),
       lastVolumePotValue(-1), brightnessLevel(3) {
 }
 
@@ -16,6 +16,7 @@ HardwareSetup::~HardwareSetup() {
     if (audio) delete audio;
     if (webServer) delete webServer;
     if (led) delete led;
+    if (touchScreen) delete touchScreen;
 }
 
 bool HardwareSetup::begin() {
@@ -37,23 +38,33 @@ bool HardwareSetup::begin() {
     Serial.println("HW - Init Time");
     initTime();
     
-    // IMPORTANT: Initialize Audio and FM Radio BEFORE WebServer
+    // Initialize Audio and FM Radio BEFORE WebServer
     Serial.println("HW - Init Audio");
     initAudio();
     
     Serial.println("HW - Init FMRadio");
     initFMRadio();
     
-    // NOW initialize WebServer (it needs audio and fmRadio to exist)
+    // NOW initialize WebServer
     Serial.println("HW - Init WebServer");
     initWebServer();
+    
+    // Initialize touchscreen LAST (after everything else is ready)
+    Serial.println("HW - Init TouchScreen");
+    initTouchScreen();
     
     Serial.println("HW - Init Done");
     
     delay(2000);
     if (display) {
+        Serial.println("HW - Clear Display");
         display->clear();
+        Serial.println("HW - before draw Clock Face Done");
         display->drawClockFace();
+        Serial.println("HW - drawClockFace Done");
+    }
+    else {
+        Serial.println("HW - Display not set");
     }
     
     if (led) led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
@@ -253,5 +264,34 @@ void HardwareSetup::handleNextStationButton() {
         }
     } else if (nextButton == LOW) {
         nextStationPressed = false;
+    }
+}
+
+void HardwareSetup::initTouchScreen() {
+    Serial.println("Initializing TouchScreen...");
+    
+    // Create touchscreen module
+    touchScreen = new TouchScreenModule(TOUCH_CS, TOUCH_IRQ);
+    
+    if (!touchScreen) {
+        Serial.println("ERROR: Failed to create TouchScreenModule");
+        return;
+    }
+    
+    // Try to initialize
+    bool success = false;
+    
+    // Try with a timeout
+    Serial.println("Calling touchScreen->begin()...");
+    success = touchScreen->begin();
+    Serial.printf("touchScreen->begin() returned: %s\n", success ? "true" : "false");
+    
+    if (success) {
+        Serial.println("TouchScreen initialized successfully");
+    } else {
+        Serial.println("WARNING: TouchScreen initialization failed (will continue without touch)");
+        // Don't fail the whole system - just continue without touch
+        delete touchScreen;
+        touchScreen = nullptr;
     }
 }

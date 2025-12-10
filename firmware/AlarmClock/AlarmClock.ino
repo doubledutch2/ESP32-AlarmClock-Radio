@@ -116,11 +116,6 @@ void setup() {
     while(1) delay(1000);
   }
 
-  // Initialize the MODE_SWITCH_PIN pin so it connectes to the NO (IN=LOW)
-
-  pinMode(MODE_SWITCH_PIN, OUTPUT);
-  digitalWrite(MODE_SWITCH_PIN, HIGH);
-
   // Load stations from storage (must be done AFTER hardware init)
   loadStationsFromStorage();
 
@@ -130,7 +125,8 @@ void setup() {
     hardware->getTimeModule(),
     hardware->getFMRadio(),
     hardware->getAudio(),
-    hardware->getStorage()
+    hardware->getStorage(),
+    hardware->getTouchScreen()  // NEW: Pass touchscreen
   );
   
   // Initialize alarm controller with all required parameters
@@ -222,24 +218,28 @@ void setup() {
 void loop() {
   static unsigned long lastUpdate = 0;
   unsigned long now = millis();
-  // static boolean  pinHigh = false;
-  // static int      pinCounter = 0;
   
   yield();
 
   // Update all hardware
   hardware->loop();
   
-  // Read buttons
+  // Handle touchscreen input (only if touchscreen is available)
+  if (hardware->getTouchScreen()) {
+    menu->handleTouch();
+  }
+  
+  // Read buttons (all active LOW with INPUT_PULLUP)
   bool btnUp = !digitalRead(BTN_UP);
   bool btnDown = !digitalRead(BTN_DOWN);
   bool btnSelect = !digitalRead(BTN_SELECT);
   bool btnSnooze = !digitalRead(BTN_SNOOZE);
+  bool btnSetup = !digitalRead(BTN_SETUP);
   
   // Handle buttons (with debouncing in menu system)
   if (now - uiState.lastButtonPress >= DEBOUNCE_DELAY) {
-    if (btnUp || btnDown || btnSelect || btnSnooze) {
-      menu->handleButtons(btnUp, btnDown, btnSelect, btnSnooze);
+    if (btnUp || btnDown || btnSelect || btnSnooze || btnSetup) {
+      menu->handleButtons(btnUp, btnDown, btnSelect, btnSnooze, btnSetup);
       uiState.lastButtonPress = now;
     }
   }
@@ -251,26 +251,9 @@ void loop() {
     lastUpdate = now;
     uiState.needsRedraw = false;
   }
-
-  // Play with the MODE_SWITCH_PIN
-  /*
-  if (pinCounter == 1000) {
-    if (pinHigh) {
-      digitalWrite(MODE_SWITCH_PIN, LOW);
-      Serial.println("Set Mode Switch Pin: Low");
-      pinHigh = false;
-    }
-    else {
-      digitalWrite(MODE_SWITCH_PIN,HIGH);
-      Serial.println("Set Mode Switch Pin: High");
-      pinHigh = true;
-    }
-    pinCounter = 0;
-  }
-  pinCounter++;
-  */
-
-  // Check alarm
+  
+  // Check alarms
   alarmController->checkAlarms(hardware->getTimeModule());
+  
   delay(1);
 }

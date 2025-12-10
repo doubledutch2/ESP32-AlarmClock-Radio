@@ -7,6 +7,7 @@
 #include "FMRadioModule.h"
 #include "AudioModule.h"
 #include "StorageModule.h"
+#include "TouchScreenModule.h"
 #include "CommonTypes.h"
 
 enum MenuState {
@@ -15,7 +16,8 @@ enum MenuState {
     MENU_SET_ALARM,
     MENU_FM_RADIO,
     MENU_STATIONS,
-    MENU_SETTINGS
+    MENU_SETTINGS,
+    MENU_SETUP        // Setup screen
 };
 
 struct AlarmState {
@@ -41,6 +43,7 @@ private:
     FMRadioModule* fmRadio;
     AudioModule* audio;
     StorageModule* storage;
+    TouchScreenModule* touchScreen;  // NEW
     
     AlarmState* alarmState;
     UIState* uiState;
@@ -51,24 +54,26 @@ private:
 
 public:
     MenuSystem(DisplayILI9341* disp, TimeModule* time, FMRadioModule* fm, 
-               AudioModule* aud, StorageModule* stor);
+               AudioModule* aud, StorageModule* stor, TouchScreenModule* touch);  // Added touch
     
     void setAlarmState(AlarmState* alarm);
     void setUIState(UIState* ui);
     void setStationList(InternetRadioStation* stations, int count);
     void setWiFiStatus(bool connected);
     
-    void handleButtons(bool up, bool down, bool select, bool snooze);
+    void handleButtons(bool up, bool down, bool select, bool snooze, bool setup);
+    void handleTouch();  // NEW: Handle touchscreen input
     void updateDisplay();
     void saveConfig();
     
     // Individual screen handlers
-    void handleMainMenu(bool up, bool down, bool select);
+    void handleMainMenu(bool up, bool down, bool select, bool setup);
     void handleSetTimeMenu(bool up, bool down, bool select);
     void handleSetAlarmMenu(bool up, bool down, bool select);
     void handleFMRadioMenu(bool up, bool down, bool select);
     void handleStationsMenu(bool up, bool down, bool select);
     void handleSettingsMenu(bool up, bool down, bool select);
+    void handleSetupMenu(bool up, bool down, bool select);
     
     // Individual screen drawers
     void drawMainScreen();
@@ -77,6 +82,7 @@ public:
     void drawFMRadioScreen();
     void drawStationsScreen();
     void drawSettingsScreen();
+    void drawSetupScreen();
 };
 
 #endif

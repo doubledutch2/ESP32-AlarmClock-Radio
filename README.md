@@ -20,6 +20,8 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 - 2x MAX98357A I2S Amplifiers
 - Si4735 FM/AM Radio Module (optional)
 - 2x 4Ω 3W Speakers
+- Buck Converter to deliver 5V-VCC
+- CD74HCT4053M96 multiplexer that can switch 5V on 3.3V signal (Check ESP32 Audio Switch Wiring Diagram in Gemini)
 
 ## Partitioning
 

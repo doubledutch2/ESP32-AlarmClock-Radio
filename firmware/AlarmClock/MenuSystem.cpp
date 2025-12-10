@@ -1,9 +1,9 @@
 #include "MenuSystem.h"
 
 MenuSystem::MenuSystem(DisplayILI9341* disp, TimeModule* time, FMRadioModule* fm, 
-                       AudioModule* aud , StorageModule* stor)
+                       AudioModule* aud, StorageModule* stor, TouchScreenModule* touch)
     : display(disp), timeModule(time), fmRadio(fm), 
-      audio(aud),  storage(stor),
+      audio(aud), storage(stor), touchScreen(touch),
       alarmState(nullptr), uiState(nullptr),
       stationList(nullptr), stationCount(0), wifiConnected(false) {
 }
@@ -28,7 +28,40 @@ void MenuSystem::setWiFiStatus(bool connected) {
     wifiConnected = connected;
 }
 
-void MenuSystem::handleButtons(bool up, bool down, bool select, bool snooze) {
+void MenuSystem::handleTouch() {
+    if (!touchScreen || !touchScreen->isTouched()) return;
+    
+    // Only handle touch on SETUP screen for now
+    if (uiState && uiState->currentMenu == MENU_SETUP) {
+        // Define button area: "BACK" button
+        int btnX = 110;
+        int btnY = 150;
+        int btnW = 100;
+        int btnH = 60;
+        
+        if (touchScreen->isTouchInArea(btnX, btnY, btnW, btnH)) {
+            Serial.println("BACK button touched!");
+            
+            // Visual feedback
+            if (display) {
+                display->drawRect(btnX, btnY, btnW, btnH, ILI9341_YELLOW);
+                delay(100);
+            }
+            
+            // Go back to main screen
+            uiState->currentMenu = MENU_MAIN;
+            uiState->selectedItem = 0;
+            if (display) {
+                display->clear();
+                display->drawClockFace();
+                display->resetCache();
+            }
+            uiState->needsRedraw = true;
+        }
+    }
+}
+
+void MenuSystem::handleButtons(bool up, bool down, bool select, bool snooze, bool setup) {
     if (!uiState) return;
     
     // Handle snooze in any menu when alarm is triggered
@@ -46,10 +79,31 @@ void MenuSystem::handleButtons(bool up, bool down, bool select, bool snooze) {
         return;
     }
     
+    // Handle setup button - toggle between MAIN and SETUP screens
+    if (setup) {
+        if (uiState->currentMenu == MENU_MAIN) {
+            uiState->currentMenu = MENU_SETUP;
+            uiState->selectedItem = 0;
+            if (display) {
+                display->clear();
+            }
+        } else if (uiState->currentMenu == MENU_SETUP) {
+            uiState->currentMenu = MENU_MAIN;
+            uiState->selectedItem = 0;
+            if (display) {
+                display->clear();
+                display->drawClockFace();
+                display->resetCache();
+            }
+        }
+        uiState->needsRedraw = true;
+        return;
+    }
+    
     // Route to appropriate menu handler
     switch (uiState->currentMenu) {
         case MENU_MAIN:
-            handleMainMenu(up, down, select);
+            handleMainMenu(up, down, select, false);
             break;
         case MENU_SET_TIME:
             handleSetTimeMenu(up, down, select);
@@ -65,6 +119,9 @@ void MenuSystem::handleButtons(bool up, bool down, bool select, bool snooze) {
             break;
         case MENU_SETTINGS:
             handleSettingsMenu(up, down, select);
+            break;
+        case MENU_SETUP:
+            handleSetupMenu(up, down, select);
             break;
     }
 }
@@ -96,6 +153,10 @@ void MenuSystem::updateDisplay() {
             display->clear();
             drawSettingsScreen();
             break;
+        case MENU_SETUP:
+            display->clear();
+            drawSetupScreen();
+            break;
     }
 }
 
@@ -110,7 +171,7 @@ void MenuSystem::saveConfig() {
 
 // ===== MENU HANDLERS =====
 
-void MenuSystem::handleMainMenu(bool up, bool down, bool select) {
+void MenuSystem::handleMainMenu(bool up, bool down, bool select, bool setup) {
     if (!uiState) return;
     
     if (up) {
@@ -293,29 +354,47 @@ void MenuSystem::handleSettingsMenu(bool up, bool down, bool select) {
     }
 }
 
+void MenuSystem::handleSetupMenu(bool up, bool down, bool select) {
+    if (!uiState) return;
+    
+    // Handle the back button with SELECT
+    if (select) {
+        uiState->currentMenu = MENU_MAIN;
+        uiState->selectedItem = 0;
+        if (display) {
+            display->clear();
+            display->drawClockFace();
+            display->resetCache();
+        }
+        uiState->needsRedraw = true;
+    }
+    
+    // TODO: Add navigation for setup items when we add them
+    if (up) {
+        uiState->needsRedraw = true;
+    } else if (down) {
+        uiState->needsRedraw = true;
+    }
+}
+
 // ===== SCREEN DRAWING FUNCTIONS =====
 
 void MenuSystem::drawMainScreen() {
     if (!display || !timeModule) return;
     
-    // Update time with smart caching (only redraws what changed)
     display->updateTime(timeModule->getHour(), timeModule->getMinute(), timeModule->getSecond());
     display->updateDate(timeModule->getYear(), timeModule->getMonth(), timeModule->getDay());
     
-    // Update alarm status
     if (alarmState) {
         display->updateAlarmStatus(alarmState->enabled, alarmState->hour, alarmState->minute);
     }
     
-    // Update FM frequency
     if (fmRadio) {
         display->updateFMFrequency(fmRadio->getFrequency());
     }
     
-    // Update WiFi status
     display->updateWiFiStatus(wifiConnected);
     
-    // Show currently playing station
     if (audio && audio->getIsPlaying()) {
         static String lastStation = "";
         String currentStation = audio->getCurrentStationName();
@@ -326,7 +405,6 @@ void MenuSystem::drawMainScreen() {
         }
     }
     
-    // Show volume
     if (audio) {
         static int lastVol = -1;
         int vol = audio->getCurrentVolume();
@@ -339,7 +417,6 @@ void MenuSystem::drawMainScreen() {
         }
     }
     
-    // Draw menu hint (only once)
     static bool menuDrawn = false;
     if (!menuDrawn) {
         display->drawText(10, 220, "UP/DN:Menu SEL:Choose", ILI9341_CYAN, 1);
@@ -403,7 +480,6 @@ void MenuSystem::drawStationsScreen() {
         return;
     }
     
-    // Show 5 stations at a time
     int startIdx = uiState ? (uiState->selectedItem / 5) * 5 : 0;
     for (int i = 0; i < 5 && (startIdx + i) < stationCount; i++) {
         uint16_t color = ILI9341_WHITE;
@@ -411,7 +487,6 @@ void MenuSystem::drawStationsScreen() {
             color = ILI9341_GREEN;
         }
         
-        // Truncate long names
         String name = stationList[startIdx + i].name;
         if (name.length() > 20) {
             name = name.substring(0, 17) + "...";
@@ -450,4 +525,37 @@ void MenuSystem::drawSettingsScreen() {
     }
     
     display->drawText(50, 200, "Press SELECT to return", ILI9341_CYAN, 1);
+}
+
+void MenuSystem::drawSetupScreen() {
+    if (!display) return;
+    
+    // Header
+    display->fillRect(0, 0, 320, 40, ILI9341_BLUE);
+    display->drawText(100, 10, "SETUP", ILI9341_WHITE, 3);
+    
+    // Instructions
+    display->drawText(20, 60, "Setup Menu", ILI9341_WHITE, 2);
+    display->drawText(20, 90, "(Configuration options", ILI9341_CYAN, 2);
+    display->drawText(20, 115, " coming soon)", ILI9341_CYAN, 2);
+    
+    // Draw touchscreen button: "BACK"
+    int btnX = 110;
+    int btnY = 150;
+    int btnW = 100;
+    int btnH = 60;
+    
+    // Button background
+    display->fillRect(btnX, btnY, btnW, btnH, ILI9341_GREEN);
+    display->drawRect(btnX, btnY, btnW, btnH, ILI9341_WHITE);
+    
+    // Button text - use drawText instead of setCursor/print
+    display->drawText(btnX + 15, btnY + 22, "<< BACK", ILI9341_BLACK, 2);
+    
+    // Footer with instructions
+    display->fillRect(0, 215, 320, 25, ILI9341_DARKGREY);
+    display->drawText(10, 220, "Touch BACK or press SETUP button", ILI9341_WHITE, 1);
+    
+    // Draw a decorative border
+    display->drawRect(10, 50, 300, 160, ILI9341_CYAN);
 }

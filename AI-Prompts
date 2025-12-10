@@ -26,5 +26,19 @@ Alarm Screen: Replace Wifi OK with standard wifi symbol showing the wifi signal 
 "1 - 07:30 - Daily"
 "3 - 21:00 - Once"
 
+- The initialisation seems to work fine, I get:
+
+HW - Init TouchScreen
+Initializing TouchScreen...
+Calling touchScreen->begin()...
+touchScreen->begin() returned: true
+TouchScreen initialized successfully
+HW - Init Done
+
+But the serial display then displays:
+
+Touch: raw(0,0) -> screen(319,239) z=4095
+
+Every few seconds. Looking at the code, that seems to suggest the display is being touched all the time: but it isn't. Why does this happen?
 
 

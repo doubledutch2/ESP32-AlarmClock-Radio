@@ -66,6 +66,7 @@
 #define BTN_DOWN    4
 #define BTN_SELECT  5
 #define BTN_SNOOZE  6
+#define BTN_SETUP   2  // Setup/Settings button
 
 // *** END OF LOCKED PINS ***
 
