@@ -48,8 +48,7 @@ You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, Lit
 
 Pin Assignments ESP32
 
- 0 -
-
+ 0 - <br/>
  1 - VOL_POT
 
  2 -

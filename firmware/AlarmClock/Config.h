@@ -46,7 +46,7 @@
 
 // Switch pin for TS5A3159
 // The Mode_Switch_Pin is connected to the IN Pin. 
-// If it's HIGH NC = connected to COM
+// If it's HIGH NC = connected to COM // I2C - MP3/Internet Radio
 // If it's LOW  NO = connected to COM
 
 

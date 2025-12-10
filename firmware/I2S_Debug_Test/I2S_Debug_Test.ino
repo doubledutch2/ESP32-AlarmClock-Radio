@@ -9,9 +9,11 @@
 #include <Audio.h>  // ESP32-audioI2S library
 
 // Your pin definitions
-#define I2S_BCLK    15
-#define I2S_LRC     7
-#define I2S_DOUT    16
+#define I2S_LRC          7   // Word Select (shared for both amps)
+#define I2S_BCLK         15  // Bit Clock (shared for both amps)
+#define I2S_DOUT         16  // Data Out LEFT channel (to first MAX98357A)
+#define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio
+
 
 // WiFi credentials
 #define WIFI_SSID "DEBEER"
@@ -29,6 +31,9 @@ void setup() {
     Serial.println("  Using ESP32-audioI2S Library");
     Serial.println("========================================\n");
     
+    pinMode(MODE_SWITCH_PIN, OUTPUT);
+    digitalWrite(MODE_SWITCH_PIN, HIGH);
+
     // Test 1: Check PSRAM
     Serial.println("Test 1: PSRAM Check");
     Serial.println("-------------------");

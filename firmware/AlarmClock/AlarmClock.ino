@@ -119,7 +119,7 @@ void setup() {
   // Initialize the MODE_SWITCH_PIN pin so it connectes to the NO (IN=LOW)
 
   pinMode(MODE_SWITCH_PIN, OUTPUT);
-  digitalWrite(MODE_SWITCH_PIN, LOW);
+  digitalWrite(MODE_SWITCH_PIN, HIGH);
 
   // Load stations from storage (must be done AFTER hardware init)
   loadStationsFromStorage();
