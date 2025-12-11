@@ -10,9 +10,9 @@ bool TouchScreenModule::begin() {
     
     bool success = ts->begin();
     if (success) {
-        Serial.println("TouchScreen initialized successfully");
+        Serial.println("TS: TouchScreen initialized successfully");
     } else {
-        Serial.println("TouchScreen initialization failed");
+        Serial.println("TS: TouchScreen initialization failed");
     }
     return success;
 }
@@ -45,6 +45,11 @@ TouchPoint TouchScreenModule::getPoint() {
     
     // Check pressure threshold
     if (raw.z < TOUCH_PRESSURE_THRESHOLD) {
+        return result;
+    }
+    
+    // Filter out spurious readings (z=4095 with x,y near 0 means floating/no touch)
+    if (raw.z >= 4090 && raw.x < 50 && raw.y < 50) {
         return result;
     }
     

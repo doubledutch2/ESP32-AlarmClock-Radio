@@ -1,6 +1,7 @@
 #ifndef DISPLAY_ILI9341_H
 #define DISPLAY_ILI9341_H
 
+#include <SPI.h> // LdB
 #include <Adafruit_ILI9341.h>
 #include <Adafruit_GFX.h>
 

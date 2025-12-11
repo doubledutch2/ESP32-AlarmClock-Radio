@@ -55,16 +55,15 @@ bool HardwareSetup::begin() {
     
     Serial.println("HW - Init Done");
     
+    // Give user time to see init messages, then clear
     delay(2000);
+    
+    // Clear the display and start fresh with clock face
     if (display) {
-        Serial.println("HW - Clear Display");
+        Serial.println("Clearing display and drawing clock face...");
         display->clear();
-        Serial.println("HW - before draw Clock Face Done");
         display->drawClockFace();
-        Serial.println("HW - drawClockFace Done");
-    }
-    else {
-        Serial.println("HW - Display not set");
+        Serial.println("Clock face drawn");
     }
     
     if (led) led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
@@ -284,10 +283,11 @@ void HardwareSetup::initTouchScreen() {
     // Try with a timeout
     Serial.println("Calling touchScreen->begin()...");
     success = touchScreen->begin();
+
     Serial.printf("touchScreen->begin() returned: %s\n", success ? "true" : "false");
     
     if (success) {
-        Serial.println("TouchScreen initialized successfully");
+        Serial.println("HW - TouchScreen initialized successfully");
     } else {
         Serial.println("WARNING: TouchScreen initialization failed (will continue without touch)");
         // Don't fail the whole system - just continue without touch

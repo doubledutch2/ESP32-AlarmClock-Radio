@@ -15,13 +15,13 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 
 ## Hardware
 
-- ESP32-S3-DevKitC-1 (16MB Flash, 8MB PSRAM)
+- ESP32-S3-DevKitC-1 (16MB Flash, 8MB PSRAM) (LCSC Part: C3013946)
 - ILI9341 2.8" TFT Display (SPI)
-- 2x MAX98357A I2S Amplifiers
+- 2x MAX98357A I2S Amplifiers (LCSC Part: C910544)
 - Si4735 FM/AM Radio Module (optional)
 - 2x 4Ω 3W Speakers
-- Buck Converter to deliver 5V-VCC
-- CD74HCT4053M96 multiplexer that can switch 5V on 3.3V signal (Check ESP32 Audio Switch Wiring Diagram in Gemini)
+- Buck Converter to deliver 5V-VCC (LCSC Part: C9865)
+- CD74HCT4053M96 multiplexer that can switch 5V on 3.3V signal (Check ESP32 Audio Switch Wiring Diagram in Gemini) (LCSC: C6559)
 
 ## Partitioning
 
