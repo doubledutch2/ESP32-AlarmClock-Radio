@@ -31,8 +31,38 @@ void MenuSystem::setWiFiStatus(bool connected) {
 void MenuSystem::handleTouch() {
     if (!touchScreen || !touchScreen->isTouched()) return;
     
-    // Only handle touch on SETUP screen for now
-    if (uiState && uiState->currentMenu == MENU_SETUP) {
+    if (!uiState) return;
+    
+    // Handle touch on MAIN (clock) screen
+    if (uiState->currentMenu == MENU_MAIN) {
+        // Define "SETUP" button area (bottom-right corner)
+        int btnX = 220;
+        int btnY = 180;
+        int btnW = 90;
+        int btnH = 50;
+        
+        if (touchScreen->isTouchInArea(btnX, btnY, btnW, btnH)) {
+            Serial.println("SETUP button touched on main screen!");
+            
+            // Visual feedback
+            if (display) {
+                display->drawRect(btnX, btnY, btnW, btnH, ILI9341_YELLOW);
+                delay(100);
+            }
+            
+            // Go to setup screen
+            uiState->currentMenu = MENU_SETUP;
+            uiState->selectedItem = 0;
+            if (display) {
+                display->clear();
+            }
+            uiState->needsRedraw = true;
+        }
+        return;
+    }
+    
+    // Handle touch on SETUP screen
+    if (uiState->currentMenu == MENU_SETUP) {
         // Define button area: "BACK" button
         int btnX = 110;
         int btnY = 150;
@@ -415,6 +445,24 @@ void MenuSystem::drawMainScreen() {
             display->drawText(220, 220, volStr, ILI9341_CYAN, 1);
             lastVol = vol;
         }
+    }
+    
+    // Draw SETUP button (bottom-right) - only draw once
+    static bool setupButtonDrawn = false;
+    if (!setupButtonDrawn && touchScreen) {
+        int btnX = 220;
+        int btnY = 180;
+        int btnW = 90;
+        int btnH = 50;
+        
+        // Button background
+        display->fillRect(btnX, btnY, btnW, btnH, ILI9341_BLUE);
+        display->drawRect(btnX, btnY, btnW, btnH, ILI9341_WHITE);
+        
+        // Button text
+        display->drawText(btnX + 15, btnY + 18, "SETUP", ILI9341_WHITE, 2);
+        
+        setupButtonDrawn = true;
     }
     
     static bool menuDrawn = false;

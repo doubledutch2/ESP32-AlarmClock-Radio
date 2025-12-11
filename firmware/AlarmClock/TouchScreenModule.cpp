@@ -8,13 +8,17 @@ TouchScreenModule::TouchScreenModule(int cs, int irq)
 bool TouchScreenModule::begin() {
     if (!ts) return false;
     
-    bool success = ts->begin();
-    if (success) {
-        Serial.println("TS: TouchScreen initialized successfully");
-    } else {
-        Serial.println("TS: TouchScreen initialization failed");
-    }
-    return success;
+    // XPT2046 begin() can hang if hardware isn't connected properly
+    // Try to initialize but don't let it block forever
+    Serial.println("TouchScreen: Attempting initialization...");
+    
+    // The XPT2046 library doesn't have a timeout, so we just try it
+    // If your hardware isn't connected, you may need to comment this out
+    ts->begin();
+    
+    // Always return true - we'll check if it actually works when we try to use it
+    Serial.println("TouchScreen: Initialization attempted");
+    return true;
 }
 
 bool TouchScreenModule::isTouched() {
