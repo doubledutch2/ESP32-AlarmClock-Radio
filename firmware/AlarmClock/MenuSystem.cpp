@@ -448,7 +448,12 @@ void MenuSystem::drawMainScreen() {
     }
     
     // Draw SETUP button (bottom-right) - only draw once
+
     static bool setupButtonDrawn = false;
+    
+    Serial.printf("MenuSystem - setupButtonDrawn: %s\n", setupButtonDrawn ? "true" : "false");
+    Serial.printf("MenuSystem - touchScreen: %s\n", touchScreen ? "set" : "null");
+
     if (!setupButtonDrawn && touchScreen) {
         int btnX = 220;
         int btnY = 180;
