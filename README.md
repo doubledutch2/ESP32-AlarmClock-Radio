@@ -16,7 +16,7 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 ## Hardware
 
 - ESP32-S3-DevKitC-1 (16MB Flash, 8MB PSRAM) (LCSC Part: C3013946)
-- ILI9341 2.8" TFT Display (SPI)
+- ILI9341 2.8" TFT Display (SPI) with Touch Screen IC: HR2046
 - 2x MAX98357A I2S Amplifiers (LCSC Part: C910544)
 - Si4735 FM/AM Radio Module (optional)
 - 2x 4Ω 3W Speakers

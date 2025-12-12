@@ -28,4 +28,4 @@ Alarm Screen: Replace Wifi OK with standard wifi symbol showing the wifi signal 
 
 - It still doesn't work and I narrowed it down to the statement "bool success = ts->begin()" in TouchScreenModule.cpp. If I comment that out - it works BUT I was expecting to see a Setup Button on the Clock-Face Screen which isn't there?
 
-
+I can get the ILI9341 and 
