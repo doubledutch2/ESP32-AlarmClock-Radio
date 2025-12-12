@@ -66,6 +66,7 @@ Green: T_CS -> move to
 // If it's LOW  NO = connected to COM
 
 #define ENABLE_TOUCHSCREEN     true
+#define INIT_TOUCHSCREEN_FIRST true
 
 #define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio
 

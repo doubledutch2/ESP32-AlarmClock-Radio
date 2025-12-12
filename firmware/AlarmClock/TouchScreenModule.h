@@ -2,6 +2,7 @@
 #define TOUCHSCREEN_MODULE_H
 
 #include <XPT2046_Touchscreen.h>
+#include "Config.h"
 
 // Touch calibration values (from your working example)
 #define RAW_X_MIN 300

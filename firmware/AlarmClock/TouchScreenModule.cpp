@@ -16,6 +16,11 @@ bool TouchScreenModule::begin() {
         return true;
     }
     
+    if (INIT_TOUCHSCREEN_FIRST) {
+        initialized = true;
+        return true;
+    }
+
     Serial.println("TouchScreen: Starting initialization NOW...");
     
     try {
@@ -50,18 +55,21 @@ bool TouchScreenModule::isTouched() {
     // Check debounce
     unsigned long now = millis();
     if (now - lastTouchTime < DEBOUNCE_DELAY) {
+    Serial.println("TouchScreenModule: isTouched3");
         return false;
     }
     
     if (ts->touched()) {
+        Serial.println("TouchScreenModule: isTouched");
         lastTouchTime = now;
         return true;
     }
-    
+
     return false;
 }
 
 TouchPoint TouchScreenModule::getPoint() {
+    Serial.println("TouchScreenModule: getPoint");
     TouchPoint result = {0, 0, 0, false};
     
     if (!ts) return result;
@@ -89,6 +97,7 @@ TouchPoint TouchScreenModule::getPoint() {
 }
 
 TouchPoint TouchScreenModule::mapAndInvertPoint(TS_Point raw) {
+    Serial.println("TouchScreenModule: mapAndInvertPoint");
     TouchPoint mapped;
     
     // Map raw coordinates to screen coordinates

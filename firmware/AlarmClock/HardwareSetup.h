@@ -11,6 +11,7 @@
 #include "WebServerModule.h"
 #include "LEDModule.h"
 #include "TouchScreenModule.h"  // NEW
+#include <SPI.h>
 
 class HardwareSetup {
 private:
