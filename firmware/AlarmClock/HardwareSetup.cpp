@@ -38,35 +38,48 @@ bool HardwareSetup::begin() {
     Serial.println("HW - Init Time");
     initTime();
     
-    // Initialize Audio and FM Radio BEFORE WebServer
-    Serial.println("HW - Init Audio");
+    Serial.println("HW - Init Audio (this may take a moment...)");
     initAudio();
+    Serial.println("HW - Audio init completed");
     
     Serial.println("HW - Init FMRadio");
     initFMRadio();
     
-    // NOW initialize WebServer
     Serial.println("HW - Init WebServer");
     initWebServer();
     
-    // Initialize touchscreen LAST (after everything else is ready)
     Serial.println("HW - Init TouchScreen");
     initTouchScreen();
     
     Serial.println("HW - Init Done");
+    Serial.println("===========================================");
+    Serial.println("Preparing to clear display and show clock...");
     
-    // Give user time to see init messages, then clear
-    delay(2000);
+    // Give user time to see init messages
+    delay(1000);
     
-    // Clear the display and start fresh with clock face
+    // FORCE clear the display multiple times if needed
     if (display) {
-        Serial.println("Clearing display and drawing clock face...");
+        Serial.println("Step 1: Clearing display...");
         display->clear();
+        delay(100);
+        
+        Serial.println("Step 2: Drawing clock face...");
         display->drawClockFace();
-        Serial.println("Clock face drawn");
+        delay(100);
+        
+        Serial.println("Step 3: Display should now show clock");
+    } else {
+        Serial.println("ERROR: Display is null!");
     }
     
-    if (led) led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
+    if (led) {
+        led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
+    }
+    
+    Serial.println("===========================================");
+    Serial.println("Hardware initialization complete!");
+    Serial.println("===========================================");
     
     return true;
 }
@@ -195,11 +208,21 @@ void HardwareSetup::initAudio() {
     if (ENABLE_AUDIO) {
         Serial.println("Initializing Audio...");
         audio = new AudioModule(I2S_BCLK, I2S_LRC, I2S_DOUT, MAX_VOLUME);
-        audio->begin();
-        audio->setVolume(3);
-        if (display) display->drawText(10, 140, "Audio: OK", ILI9341_GREEN, 2);
+        
+        if (audio) {
+            Serial.println("AudioModule created, calling begin()...");
+            audio->begin();
+            audio->setVolume(3);
+            Serial.println("AudioModule initialization complete");
+            if (display) display->drawText(10, 140, "Audio: OK", ILI9341_GREEN, 2);
+        } else {
+            Serial.println("Failed to create AudioModule");
+            if (display) display->drawText(10, 140, "Audio: FAIL", ILI9341_RED, 2);
+        }
+    } else {
+        Serial.println("Audio disabled in config");
     }
-}
+}// Update begin() - Force display clear and add better error handling
 
 void HardwareSetup::initFMRadio() {
     if (ENABLE_FM_RADIO) {
@@ -267,31 +290,20 @@ void HardwareSetup::handleNextStationButton() {
 }
 
 void HardwareSetup::initTouchScreen() {
-    Serial.println("Initializing TouchScreen...");
-    
-    // Create touchscreen module
-    touchScreen = new TouchScreenModule(TOUCH_CS, TOUCH_IRQ);
-    
-    if (!touchScreen) {
-        Serial.println("ERROR: Failed to create TouchScreenModule");
-        return;
-    }
-    
-    // Try to initialize
-    bool success = false;
-    
-    // Try with a timeout
-    Serial.println("Calling touchScreen->begin()...");
-    success = touchScreen->begin();
-
-    Serial.printf("touchScreen->begin() returned: %s\n", success ? "true" : "false");
-    
-    if (success) {
-        Serial.println("HW - TouchScreen initialized successfully");
-    } else {
-        Serial.println("WARNING: TouchScreen initialization failed (will continue without touch)");
-        // Don't fail the whole system - just continue without touch
-        delete touchScreen;
+    #if ENABLE_TOUCHSCREEN
+        Serial.println("TouchScreen: Creating module (deferred init)...");
+        
+        // Just create the object, DON'T call begin() yet
+        // We'll initialize it lazily on first use
+        touchScreen = new TouchScreenModule(TOUCH_CS, TOUCH_IRQ);
+        
+        if (touchScreen) {
+            Serial.println("TouchScreen: Module created (will initialize on first touch)");
+        } else {
+            Serial.println("ERROR: Failed to create TouchScreenModule");
+        }
+    #else
+        Serial.println("TouchScreen disabled in config (ENABLE_TOUCHSCREEN = false)");
         touchScreen = nullptr;
-    }
+    #endif
 }

@@ -5,6 +5,7 @@
 // Choose which display to use (comment/uncomment)
 // #define USE_OLED_DISPLAY    // Use I2C OLED display
 #define USE_TFT_DISPLAY  // Use SPI TFT display (ILI9341)
+#define ENABLE_TOUCHSCREEN true
 
 // Enable/disable modules
 #define ENABLE_AUDIO     true
@@ -24,11 +25,23 @@
 
 // uint8_t rdaAddresses[] = {0x10, 0x11, 0};
 
+
+
 // I2S Audio pins (for Internet Radio via MAX98357A)
 #define I2S_LRC          7   // Word Select (shared for both amps)
 #define I2S_BCLK         15  // Bit Clock (shared for both amps)
 #define I2S_DOUT         16  // Data Out LEFT channel (to first MAX98357A)
+/*
+Pin 40 Currently: 
 
+Yellow Black: Screen SCK -> Move to 13
+White: T_CLK
+
+Pin 13 Currently:
+
+Green: T_CS -> move to
+
+*/
 // SPI pins for TFT Display (ILI9341)
 #define TFT_MISO         12  
 #define TFT_MOSI         11  
@@ -52,6 +65,7 @@
 // If it's HIGH NC = connected to COM // I2C - MP3/Internet Radio
 // If it's LOW  NO = connected to COM
 
+#define ENABLE_TOUCHSCREEN     true
 
 #define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio
 
@@ -60,6 +74,8 @@
   #define FM_RESET_PIN     42  // Si4735 reset pin
   #define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
 #endif
+
+
 
 // Button Pins for alarm clock interface
 #define BTN_UP      3

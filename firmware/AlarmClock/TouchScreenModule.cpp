@@ -1,28 +1,51 @@
 #include "TouchScreenModule.h"
 
 TouchScreenModule::TouchScreenModule(int cs, int irq) 
-    : touchCS(cs), touchIRQ(irq), lastTouchTime(0) {
+    : touchCS(cs), touchIRQ(irq), initialized(false), lastTouchTime(0) {
     ts = new XPT2046_Touchscreen(cs, irq);
 }
 
 bool TouchScreenModule::begin() {
-    if (!ts) return false;
+    if (!ts) {
+        Serial.println("TouchScreen: ts object is null");
+        return false;
+    }
     
-    // XPT2046 begin() can hang if hardware isn't connected properly
-    // Try to initialize but don't let it block forever
-    Serial.println("TouchScreen: Attempting initialization...");
+    if (initialized) {
+        Serial.println("TouchScreen: Already initialized");
+        return true;
+    }
     
-    // The XPT2046 library doesn't have a timeout, so we just try it
-    // If your hardware isn't connected, you may need to comment this out
-    ts->begin();
+    Serial.println("TouchScreen: Starting initialization NOW...");
     
-    // Always return true - we'll check if it actually works when we try to use it
-    Serial.println("TouchScreen: Initialization attempted");
-    return true;
+    try {
+        Serial.println("TouchScreen: Calling ts->begin()...");
+        ts->begin();
+        Serial.println("TouchScreen: ts->begin() completed successfully");
+        initialized = true;
+        return true;
+    } catch (...) {
+        Serial.println("TouchScreen: Exception during begin()");
+        return false;
+    }
+}
+
+bool TouchScreenModule::ensureInitialized() {
+    if (initialized) return true;
+    
+    // Try to initialize on first use
+    Serial.println("TouchScreen: Lazy initialization triggered");
+    return begin();
 }
 
 bool TouchScreenModule::isTouched() {
     if (!ts) return false;
+    
+    // Initialize on first touch attempt
+    if (!ensureInitialized()) {
+        Serial.println("TouchScreen: Failed to initialize, disabling");
+        return false;
+    }
     
     // Check debounce
     unsigned long now = millis();
@@ -41,7 +64,12 @@ bool TouchScreenModule::isTouched() {
 TouchPoint TouchScreenModule::getPoint() {
     TouchPoint result = {0, 0, 0, false};
     
-    if (!ts || !ts->touched()) {
+    if (!ts) return result;
+    
+    // Ensure initialized
+    if (!ensureInitialized()) return result;
+    
+    if (!ts->touched()) {
         return result;
     }
     

@@ -27,10 +27,14 @@ private:
     XPT2046_Touchscreen* ts;
     int touchCS;
     int touchIRQ;
+    bool initialized;  // NEW: Track if begin() has been called
     
     // Debouncing
     unsigned long lastTouchTime;
     static const unsigned long DEBOUNCE_DELAY = 200;
+    
+    // Lazy initialization
+    bool ensureInitialized();  // NEW: Call begin() only when needed
 
 public:
     TouchScreenModule(int cs, int irq);

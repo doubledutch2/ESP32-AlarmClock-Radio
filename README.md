@@ -48,42 +48,7 @@ You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, Lit
 
 ## PINOUT
 
-Pin Assignments ESP32
-
- 0 - <br/>
- 1 - VOL_POT<br/>
- 2 -<br/>
- 3 - BTN_UP<br/>
- 4 - BTN_DOWN<br/>
- 5 - BTN_SELECT <br/>
- 6 - BTN_SNOOZE<br/>
- 7 - I2S_LCR<br/>
- 8 - I2C_SCA<br/>
- 9 - I2C_SCL<br/>
-10 - TFT_CS<br/>
-11 - TFT_MOSI<br/>
-12 - TFT_MISO<br/>
-13 - <br/>
-14 - <br/>
-15 - I2S_BCLK<br/>
-16 - I2S_DOUT<br/>
-17 - MODE_SWITCH_PIN<br/>
-18 - [Reserved] ?????<br/>
-19 - [Reserved] USB D- (Do not Use)<br/>
-20 - [Reserved] USB D+ (Do not Use)<br/>
-21 - TFT_RST<br/>
-35 - [Reserved PSRAM]<br/>
-36 - [Reserved PSRAM]<br/>
-37 - [Reserved PSRAM]<br/>
-38 - BTN_BRIGHT<br/>
-39 - BTN_NEXT_STATION<br/>
-40 - TFT_SCLK [MODE_SWITCH<br/>
-41 - AUDIO_SWITCH<br/>
-42 - FM_RESET<br/>
-45 - <br/>
-47 - TFT_BL<br/>
-48 - LED Build In<br/>
-
+Pin Assignments ESP32 check Config.h
 
 ## Software Requirements
 
