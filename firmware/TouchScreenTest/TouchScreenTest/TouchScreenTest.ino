@@ -1,213 +1,100 @@
-// ----------------------------------------------------
-// TOUCH SCREEN NAVIGATION EXAMPLE
-// Based on ILI9341 Display and XPT2046 Touch Controller
-// ----------------------------------------------------
-
 #include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_ILI9341.h>
-#include <XPT2046_Touchscreen.h>
+#include <TFT_eSPI.h>
+#include <XPT2046_Touchscreen.h> 
 
-// --- PIN DEFINITIONS (Use your existing pins) ---
-#define TFT_CS    10
-#define TFT_DC    45
-#define TFT_RST   21
-#define TFT_MOSI  11
-#define TFT_MISO  12
-#define TFT_SCLK  40
-#define TFT_BL    47
+// **********************************************
+// PIN DEFINITIONS (From your Config.h)
+// **********************************************
+// TFT_eSPI uses User_Setup.h for display pins.
+// These are used by the Touch library initialization below.
+ #define TFT_BL           4   // Backlight pin (using the working pin 4)
+ #define TOUCH_CS         13
+ // #define TOUCH_IRQ        2   // Required for proper touch interrupt handling
 
-#define TOUCH_CS  13   // change if different
-#define TOUCH_IRQ 2    // change if different
+// **********************************************
+// TFT_eSPI Setup
+// **********************************************
+TFT_eSPI tft = TFT_eSPI(); 
 
-// --- DISPLAY OBJECTS ---
-// Initialize TFT and Touch with your setup
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
-XPT2046_Touchscreen ts(TOUCH_CS, TOUCH_IRQ);
+// **********************************************
+// Touchscreen Setup (FIXED CONSTRUCTOR)
+// **********************************************
+// Removed the third argument (tft.getSPIinstance()) to match your library version.
+// XPT2046_Touchscreen ts(TOUCH_CS, TOUCH_IRQ); 
 
-// --- SCREEN AND CALIBRATION CONSTANTS ---
-// Screen geometry (Assuming Rotation 1 for 320x240 landscape)
-const int SCREEN_W = 320;
-const int SCREEN_H = 240;
+// **********************************************
+// Backlight (PWM) Fix Variables
+// **********************************************
+uint8_t ledc_channel = 0; // Will hold the actual assigned channel
 
-// *** YOUR FINAL, CORRECTED CALIBRATION VALUES ***
-int rawX_min = 300;   // low raw X seen when touching bottom right
-int rawX_max = 3800;  // high raw X seen when touching top left
-int rawY_min = 270;   // low raw Y seen when touching bottom right
-int rawY_max = 3700;  // high raw Y seen when touching top left
-
-// --- NAVIGATION STATE ---
-enum ScreenState {
-  HOME_SCREEN,
-  BACK_SCREEN
-};
-ScreenState currentScreen = HOME_SCREEN;
-
-// --- BUTTON STRUCTURE (for simple handling) ---
-struct Button {
-  int x;
-  int y;
-  int w;
-  int h;
-  const char* label;
-  uint16_t color;
-};
-
-// Define a common button size/position
-#define BUTTON_W 100
-#define BUTTON_H 60
-#define BUTTON_X 110
-#define BUTTON_Y 150
-
-// --- FUNCTION PROTOTYPES ---
-void drawHomeScreen();
-void drawBackScreen();
-bool checkButtonPress(TS_Point p, Button btn);
-
-// ----------------------------------------------------
-// SETUP
-// ----------------------------------------------------
 void setup() {
-  Serial.begin(115200);
+    Serial.begin(115200);
+    delay(100);
+    Serial.println("\n--- Starting Debug Sketch ---");
 
-  // Start SPI (explicit pins)
-  SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI);
+    // 1. TFT Initialization (Ensure User_Setup.h has TFT_RST set to -1)
+    tft.init();
+    Serial.println("\n--- Done Init ---");
+    
+    tft.setRotation(1); // Landscape
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextFont(1); // FIX: Prevents LoadProhibited crash on first text draw
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString("Display Initialized (TFT_eSPI)", 10, 10, 2);
 
-  // Initialize display
-  tft.begin();
-  tft.setRotation(1); // Use the working rotation (1 is often 320x240 landscape)
+    // 2. Initialize Backlight (PWM FIX)
+    pinMode(TFT_BL, OUTPUT);
+    ledc_channel = ledcAttach(TFT_BL, 5000, 8); 
+    
+    // Set brightness to a visible level
+    ledcWrite(ledc_channel, 200); 
+    Serial.printf("Backlight ON (Pin %d, Channel %d)\n", TFT_BL, ledc_channel);
 
-  // Turn on backlight (Pin 47 HIGH)
-  pinMode(TFT_BL, OUTPUT);
-  digitalWrite(TFT_BL, HIGH);
+    // 3. Initialize Touchscreen
+    /*
+    ts.begin();
+    ts.setRotation(tft.getRotation()); // Match rotation to display
+    Serial.println("Touchscreen Initialized.");
+    */
 
-  // Initialize touch screen
-  ts.begin();
-
-  // Draw the initial screen
-  drawHomeScreen();
 }
 
-// ----------------------------------------------------
-// MAIN LOOP
-// ----------------------------------------------------
 void loop() {
-  // Check for touch
-  if (ts.touched()) {
-    TS_Point p = ts.getPoint(); // raw p.x, p.y, p.z
+    Serial.println("Hello");
+    delay (1000);
+/*
+    tft.getTouchRaw(&x, &y);
+    Serial.printf("x: %i     ", x);
+    Serial.printf("y: %i     ", y);
+    Serial.printf("z: %i \n", tft.getTouchRawZ());
+*/
+/*
+  delay(250);
+    // 4. Read Touch Input and Check Stability
+    if (ts.tirqTouched() && ts.touched()) {
+        TS_Point p = ts.getPoint();
+        Serial.printf("Touch at X:%d, Y:%d, Z:%d\n", p.x, p.y, p.z);
+        tft.fillCircle(p.x, p.y, 5, TFT_YELLOW);
 
-    // Only process if pressure is above a small threshold
-    if (p.z > 5) {
-      // Map and invert raw point to screen coordinates
-      int sx = map(p.x, rawX_min, rawX_max, 0, SCREEN_W);
-      int sy = map(p.y, rawY_min, rawY_max, 0, SCREEN_H);
-
-      // Apply the inversion/flip (Crucial for your calibration)
-      sx = SCREEN_W - sx;
-      sy = SCREEN_H - sy;
-
-      // Constrain points to ensure they are on screen
-      sx = constrain(sx, 0, SCREEN_W - 1);
-      sy = constrain(sy, 0, SCREEN_H - 1);
-
-      // DEBUG: print mapped coordinates (optional)
-      // Serial.print("MAPPED: sx="); Serial.print(sx);
-      // Serial.print("  sy="); Serial.println(sy);
-
-      // Handle screen state transitions
-      if (currentScreen == HOME_SCREEN) {
-        // Define the button for the Home Screen
-        Button homeButton = {
-          BUTTON_X, BUTTON_Y, BUTTON_W, BUTTON_H, "NEXT >>", ILI9341_GREEN
-        };
-        if (checkButtonPress( {sx, sy, p.z}, homeButton) ) {
-          currentScreen = BACK_SCREEN;
-          drawBackScreen();
-        }
-      } else if (currentScreen == BACK_SCREEN) {
-        // Define the button for the Back Screen
-        Button backButton = {
-          BUTTON_X, BUTTON_Y, BUTTON_W, BUTTON_H, "<< HOME", ILI9341_RED
-        };
-        if (checkButtonPress( {sx, sy, p.z}, backButton) ) {
-          currentScreen = HOME_SCREEN;
-          drawHomeScreen();
-        }
-      }
+        // Re-assert backlight on touch
+        ledcWrite(ledc_channel, 200);
     }
-  }
-  delay(100); // Simple debounce and polling delay
-}
+*/
 
-// ----------------------------------------------------
-// DRAWING FUNCTIONS
-// ----------------------------------------------------
-
-void drawHomeScreen() {
-  tft.fillScreen(ILI9341_BLUE); // Clear screen with a blue background
-
-  // Draw Title
-  tft.setTextSize(3);
-  tft.setTextColor(ILI9341_YELLOW);
-  tft.setCursor(60, 50);
-  tft.println("WELCOME HOME");
-
-  // Draw Button
-  Button homeButton = {
-    BUTTON_X, BUTTON_Y, BUTTON_W, BUTTON_H, "NEXT >>", ILI9341_GREEN
-  };
-  tft.fillRect(homeButton.x, homeButton.y, homeButton.w, homeButton.h, homeButton.color);
-  tft.drawRect(homeButton.x, homeButton.y, homeButton.w, homeButton.h, ILI9341_WHITE);
-  
-  // Draw Button Text
-  tft.setTextSize(2);
-  tft.setTextColor(ILI9341_BLACK);
-  // Calculate text centering
-  int text_w = 6 * strlen(homeButton.label) * 2; // Approx width of string
-  tft.setCursor(homeButton.x + (homeButton.w - text_w) / 2, homeButton.y + BUTTON_H/2 - 8);
-  tft.print(homeButton.label);
-}
-
-void drawBackScreen() {
-  tft.fillScreen(ILI9341_BLACK); // Clear screen with a black background
-
-  // Draw Title
-  tft.setTextSize(3);
-  tft.setTextColor(ILI9341_MAGENTA);
-  tft.setCursor(60, 50);
-  tft.println("YOU ARE BACK!");
-
-  // Draw Button
-  Button backButton = {
-    BUTTON_X, BUTTON_Y, BUTTON_W, BUTTON_H, "<< HOME", ILI9341_RED
-  };
-  tft.fillRect(backButton.x, backButton.y, backButton.w, backButton.h, backButton.color);
-  tft.drawRect(backButton.x, backButton.y, backButton.w, backButton.h, ILI9341_WHITE);
-  
-  // Draw Button Text
-  tft.setTextSize(2);
-  tft.setTextColor(ILI9341_WHITE);
-  // Calculate text centering
-  int text_w = 6 * strlen(backButton.label) * 2; // Approx width of string
-  tft.setCursor(backButton.x + (backButton.w - text_w) / 2, backButton.y + BUTTON_H/2 - 8);
-  tft.print(backButton.label);
-}
-
-// ----------------------------------------------------
-// HELPER FUNCTION
-// ----------------------------------------------------
-
-// Checks if the given screen point (p) is within the button's boundaries
-bool checkButtonPress(TS_Point p, Button btn) {
-  // Check if x-coordinate is within bounds
-  if (p.x >= btn.x && p.x <= btn.x + btn.w) {
-    // Check if y-coordinate is within bounds
-    if (p.y >= btn.y && p.y <= btn.y + btn.h) {
-      // Small visual feedback on the button press
-      tft.drawRect(btn.x, btn.y, btn.w, btn.h, ILI9341_YELLOW);
-      delay(75); // Debounce to prevent multiple presses
-      return true;
+    // 5. Simple counter to test continuous operation
+    static unsigned long last_sec = 0;
+    static int counter = 0;
+    if (millis() - last_sec > 1000) {
+        last_sec = millis();
+        tft.fillRect(10, 30, 200, 20, TFT_BLACK); 
+        tft.drawNumber(counter++, 10, 30, 2); 
+        
+        // This log will prove the loop is running after 30 seconds
+        Serial.printf("Loop running: %d\n", counter); 
+        
+        // CRITICAL CHECK: Re-assert backlight every second to fight external dimming/reset
+        ledcWrite(ledc_channel, 200); 
     }
-  }
-  return false;
+    
+    delay(1);
 }

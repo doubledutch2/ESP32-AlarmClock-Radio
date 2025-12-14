@@ -122,7 +122,8 @@ void HardwareSetup::initButtons() {
 
 void HardwareSetup::initDisplay() {
     Serial.println("Initializing Display...");
-    display = new DisplayILI9341(TFT_CS, TFT_DC, TFT_RST, TFT_MOSI, TFT_SCLK, TFT_MISO, TFT_BL);
+    // display = new DisplayILI9341(TFT_CS, TFT_DC, TFT_RST, TFT_MOSI, TFT_SCLK, TFT_MISO, TFT_BL);
+    display = new DisplayILI9341(TFT_CS, TFT_DC, -1, TFT_MOSI, TFT_SCLK, TFT_MISO, TFT_BL);
     display->begin();
     display->setBrightness(200);
     display->clear();

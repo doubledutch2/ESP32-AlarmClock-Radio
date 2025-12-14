@@ -1,13 +1,32 @@
 #ifndef DISPLAY_ILI9341_H
 #define DISPLAY_ILI9341_H
 
-#include <SPI.h> // LdB
-#include <Adafruit_ILI9341.h>
-#include <Adafruit_GFX.h>
+#include <TFT_eSPI.h>
+
+// Color compatibility - map ILI9341_ colors to TFT_ colors
+#define ILI9341_BLACK       TFT_BLACK
+#define ILI9341_NAVY        TFT_NAVY
+#define ILI9341_DARKGREEN   TFT_DARKGREEN
+#define ILI9341_DARKCYAN    TFT_DARKCYAN
+#define ILI9341_MAROON      TFT_MAROON
+#define ILI9341_PURPLE      TFT_PURPLE
+#define ILI9341_OLIVE       TFT_OLIVE
+#define ILI9341_LIGHTGREY   TFT_LIGHTGREY
+#define ILI9341_DARKGREY    TFT_DARKGREY
+#define ILI9341_BLUE        TFT_BLUE
+#define ILI9341_GREEN       TFT_GREEN
+#define ILI9341_CYAN        TFT_CYAN
+#define ILI9341_RED         TFT_RED
+#define ILI9341_MAGENTA     TFT_MAGENTA
+#define ILI9341_YELLOW      TFT_YELLOW
+#define ILI9341_WHITE       TFT_WHITE
+#define ILI9341_ORANGE      TFT_ORANGE
+#define ILI9341_GREENYELLOW TFT_GREENYELLOW
+#define ILI9341_PINK        TFT_PINK
 
 class DisplayILI9341 {
 private:
-    Adafruit_ILI9341 tft;
+    TFT_eSPI tft;
     int8_t backlightPin;
     uint8_t brightness;
     
@@ -28,6 +47,7 @@ private:
     int16_t clockCenterX;
     int16_t clockCenterY;
     int16_t clockRadius;
+    uint8_t ledcChannel; // <-- ADD THIS LINE
     
     void drawHourHand(uint8_t hour, uint8_t minute, bool erase);
     void drawMinuteHand(uint8_t minute, bool erase);
@@ -39,7 +59,7 @@ public:
     void begin();
     void clear();
     void setBrightness(uint8_t level);
-    uint8_t getBrightness();  // Add getter
+    uint8_t getBrightness();
     
     // Smart update functions (only redraw if changed)
     void updateTime(uint8_t hour, uint8_t minute, uint8_t second);
@@ -63,7 +83,7 @@ public:
     int16_t getHeight();
     
     void resetCache();
-    void drawClockFace();  // Make public so it can be called from main
+    void drawClockFace();
 };
 
 #endif

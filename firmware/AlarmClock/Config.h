@@ -1,6 +1,37 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+
+// Add this to the top of DisplayILI9341.h or Config.h to maintain compatibility
+
+// TFT_eSPI uses TFT_ prefix for colors instead of ILI9341_
+// Define aliases for backward compatibility
+
+#ifndef TFT_COLOR_COMPAT_H
+#define TFT_COLOR_COMPAT_H
+
+#define ILI9341_BLACK       TFT_BLACK
+#define ILI9341_NAVY        TFT_NAVY
+#define ILI9341_DARKGREEN   TFT_DARKGREEN
+#define ILI9341_DARKCYAN    TFT_DARKCYAN
+#define ILI9341_MAROON      TFT_MAROON
+#define ILI9341_PURPLE      TFT_PURPLE
+#define ILI9341_OLIVE       TFT_OLIVE
+#define ILI9341_LIGHTGREY   TFT_LIGHTGREY
+#define ILI9341_DARKGREY    TFT_DARKGREY
+#define ILI9341_BLUE        TFT_BLUE
+#define ILI9341_GREEN       TFT_GREEN
+#define ILI9341_CYAN        TFT_CYAN
+#define ILI9341_RED         TFT_RED
+#define ILI9341_MAGENTA     TFT_MAGENTA
+#define ILI9341_YELLOW      TFT_YELLOW
+#define ILI9341_WHITE       TFT_WHITE
+#define ILI9341_ORANGE      TFT_ORANGE
+#define ILI9341_GREENYELLOW TFT_GREENYELLOW
+#define ILI9341_PINK        TFT_PINK
+
+#endif
+
 // ===== Feature Flags =====
 // Choose which display to use (comment/uncomment)
 // #define USE_OLED_DISPLAY    // Use I2C OLED display
@@ -42,6 +73,44 @@ Pin 13 Currently:
 Green: T_CS -> move to
 
 */
+/* NEW  - https://forum.arduino.cc/t/esp32-touchscreen-tft_espi-ili9341/607951/3 */
+// Watch this Video which talks exactly about our setup: https://www.youtube.com/watch?v=_0tgx8tezXU
+
+// #define TOUCH_IRQ 	n/a
+#define TOUCH_DO 	13
+#define TOUCH_DIN 11
+#define TOUCH_CS 	46 // 33 
+#define TOUCH_CLK 12
+
+#define TFT_MISO	13
+// #define TFT_LED		3.3V
+#define TFT_SCLK	12
+#define TFT_MOSI	11
+#define TFT_DC		15	
+#define TFT_RST	  9
+#define TFT_CS		4
+// #define TFT_GND		GND
+// #define TFT_VCC		3.3V
+
+/*
+// #define TOUCH_IRQ 	n/a
+#define TOUCH_DO 	12
+#define TOUCH_DIN 	13
+#define TOUCH_CS 	11 // 33 
+#define TOUCH_CLK 	14
+
+#define TFT_MISO	12
+// #define TFT_LED		3.3V
+#define TFT_SCK		14
+#define TFT_MOSI	13
+#define TFT_DC		2	
+#define TFT_RESET	4
+#define TFT_CS		15
+// #define TFT_GND		GND
+// #define TFT_VCC		3.3V
+*/
+
+/* OLD
 // SPI pins for TFT Display (ILI9341)
 #define TFT_MISO         12  
 #define TFT_MOSI         11  
@@ -49,10 +118,11 @@ Green: T_CS -> move to
 #define TFT_CS           10  
 #define TFT_DC           45  
 #define TFT_RST          21  
-#define TFT_BL           47  // Backlight PWM
+#define TFT_BL           4  // Backlight PWM
 
 #define TOUCH_CS         13
 #define TOUCH_IRQ        2
+*/
 
 // Control pins
 #define VOL_PIN          1   // ADC for volume potentiometer
@@ -65,8 +135,8 @@ Green: T_CS -> move to
 // If it's HIGH NC = connected to COM // I2C - MP3/Internet Radio
 // If it's LOW  NO = connected to COM
 
-#define ENABLE_TOUCHSCREEN     true
-#define INIT_TOUCHSCREEN_FIRST true
+#define ENABLE_TOUCHSCREEN     false
+#define INIT_TOUCHSCREEN_FIRST false
 
 #define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio
 
