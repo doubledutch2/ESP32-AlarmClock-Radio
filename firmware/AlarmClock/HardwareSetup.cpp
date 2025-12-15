@@ -20,14 +20,6 @@ HardwareSetup::~HardwareSetup() {
 }
 
 bool HardwareSetup::begin() {
-
-    SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI);
-
-    if (INIT_TOUCHSCREEN_FIRST) {    
-        Serial.println("HW - Init TouchScreen");
-        initTouchScreen();
-    }
-
     Serial.println("HW - Init Display");
     initDisplay();
     
@@ -55,12 +47,10 @@ bool HardwareSetup::begin() {
     
     Serial.println("HW - Init WebServer");
     initWebServer();
-
-    if (!INIT_TOUCHSCREEN_FIRST) {    
-        Serial.println("HW - Init TouchScreen");
-        initTouchScreen();
-    }
-
+    
+    Serial.println("HW - Init TouchScreen");
+    initTouchScreen();
+    
     Serial.println("HW - Init Done");
     Serial.println("===========================================");
     Serial.println("Preparing to clear display and show clock...");
@@ -302,20 +292,28 @@ void HardwareSetup::handleNextStationButton() {
 
 void HardwareSetup::initTouchScreen() {
     #if ENABLE_TOUCHSCREEN
-        Serial.println("TouchScreen: Creating module (deferred init)...");
+        Serial.println("TouchScreen: Creating module using TFT_eSPI...");
         
-        // Just create the object, DON'T call begin() yet
-        // We'll initialize it lazily on first use
-        touchScreen = new TouchScreenModule(TOUCH_CS, TOUCH_IRQ);
-        if (INIT_TOUCHSCREEN_FIRST) {
-            touchScreen->begin();
+        if (!display) {
+            Serial.println("ERROR: Display must be initialized before touchscreen");
+            touchScreen = nullptr;
+            return;
         }
-        else {        
-            if (touchScreen) {
-                Serial.println("TouchScreen: Module created (will initialize on first touch)");
+        
+        // Pass the TFT_eSPI object from display to touchscreen
+        touchScreen = new TouchScreenModule(display->getTFT());
+        
+        if (touchScreen) {
+            bool success = touchScreen->begin();
+            if (success) {
+                Serial.println("TouchScreen: Initialized successfully (TFT_eSPI built-in)");
             } else {
-                Serial.println("ERROR: Failed to create TouchScreenModule");
+                Serial.println("WARNING: TouchScreen initialization failed");
+                delete touchScreen;
+                touchScreen = nullptr;
             }
+        } else {
+            Serial.println("ERROR: Failed to create TouchScreenModule");
         }
     #else
         Serial.println("TouchScreen disabled in config (ENABLE_TOUCHSCREEN = false)");

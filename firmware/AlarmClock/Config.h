@@ -60,7 +60,7 @@
 
 // I2S Audio pins (for Internet Radio via MAX98357A)
 #define I2S_LRC          7   // Word Select (shared for both amps)
-#define I2S_BCLK         15  // Bit Clock (shared for both amps)
+#define I2S_BCLK         8  // Bit Clock (shared for both amps)
 #define I2S_DOUT         16  // Data Out LEFT channel (to first MAX98357A)
 /*
 Pin 40 Currently: 
@@ -83,7 +83,7 @@ Green: T_CS -> move to
 #define TOUCH_CLK 12
 
 #define TFT_MISO	13
-// #define TFT_LED		3.3V
+#define TFT_LED		47
 #define TFT_SCLK	12
 #define TFT_MOSI	11
 #define TFT_DC		15	
@@ -91,38 +91,6 @@ Green: T_CS -> move to
 #define TFT_CS		4
 // #define TFT_GND		GND
 // #define TFT_VCC		3.3V
-
-/*
-// #define TOUCH_IRQ 	n/a
-#define TOUCH_DO 	12
-#define TOUCH_DIN 	13
-#define TOUCH_CS 	11 // 33 
-#define TOUCH_CLK 	14
-
-#define TFT_MISO	12
-// #define TFT_LED		3.3V
-#define TFT_SCK		14
-#define TFT_MOSI	13
-#define TFT_DC		2	
-#define TFT_RESET	4
-#define TFT_CS		15
-// #define TFT_GND		GND
-// #define TFT_VCC		3.3V
-*/
-
-/* OLD
-// SPI pins for TFT Display (ILI9341)
-#define TFT_MISO         12  
-#define TFT_MOSI         11  
-#define TFT_SCLK         40  
-#define TFT_CS           10  
-#define TFT_DC           45  
-#define TFT_RST          21  
-#define TFT_BL           4  // Backlight PWM
-
-#define TOUCH_CS         13
-#define TOUCH_IRQ        2
-*/
 
 // Control pins
 #define VOL_PIN          1   // ADC for volume potentiometer
@@ -150,7 +118,7 @@ Green: T_CS -> move to
 
 // Button Pins for alarm clock interface
 #define BTN_UP      3
-#define BTN_DOWN    4
+#define BTN_DOWN    6
 #define BTN_SELECT  5
 #define BTN_SNOOZE  6
 #define BTN_SETUP   14  // Setup/Settings button

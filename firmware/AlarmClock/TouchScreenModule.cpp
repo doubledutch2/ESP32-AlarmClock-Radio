@@ -1,13 +1,12 @@
 #include "TouchScreenModule.h"
 
-TouchScreenModule::TouchScreenModule(int cs, int irq) 
-    : touchCS(cs), touchIRQ(irq), initialized(false), lastTouchTime(0) {
-    ts = new XPT2046_Touchscreen(cs, irq);
+TouchScreenModule::TouchScreenModule(TFT_eSPI* tftPtr) 
+    : tft(tftPtr), initialized(false), lastTouchTime(0) {
 }
 
 bool TouchScreenModule::begin() {
-    if (!ts) {
-        Serial.println("TouchScreen: ts object is null");
+    if (!tft) {
+        Serial.println("TouchScreen: TFT pointer is null");
         return false;
     }
     
@@ -16,93 +15,66 @@ bool TouchScreenModule::begin() {
         return true;
     }
     
-    if (INIT_TOUCHSCREEN_FIRST) {
-        initialized = true;
-        return true;
-    }
-
-    Serial.println("TouchScreen: Starting initialization NOW...");
+    Serial.println("TouchScreen: Using TFT_eSPI built-in touch support");
     
-    try {
-        Serial.println("TouchScreen: Calling ts->begin()...");
-        ts->begin();
-        Serial.println("TouchScreen: ts->begin() completed successfully");
-        initialized = true;
-        return true;
-    } catch (...) {
-        Serial.println("TouchScreen: Exception during begin()");
-        return false;
-    }
-}
-
-bool TouchScreenModule::ensureInitialized() {
-    if (initialized) return true;
+    // TFT_eSPI automatically initializes touch when TOUCH_CS is defined in User_Setup.h
+    // No additional initialization needed!
     
-    // Try to initialize on first use
-    Serial.println("TouchScreen: Lazy initialization triggered");
-    return begin();
+    initialized = true;
+    return true;
 }
 
 bool TouchScreenModule::isTouched() {
-    if (!ts) return false;
-    
-    // Initialize on first touch attempt
-    if (!ensureInitialized()) {
-        Serial.println("TouchScreen: Failed to initialize, disabling");
-        return false;
-    }
+    if (!tft || !initialized) return false;
     
     // Check debounce
     unsigned long now = millis();
     if (now - lastTouchTime < DEBOUNCE_DELAY) {
-    Serial.println("TouchScreenModule: isTouched3");
         return false;
     }
     
-    if (ts->touched()) {
-        Serial.println("TouchScreenModule: isTouched");
+    uint16_t x, y;
+    bool touched = tft->getTouch(&x, &y);  // TFT_eSPI's built-in touch function
+    
+    if (touched) {
         lastTouchTime = now;
         return true;
     }
-
+    
     return false;
 }
 
 TouchPoint TouchScreenModule::getPoint() {
-    Serial.println("TouchScreenModule: getPoint");
     TouchPoint result = {0, 0, 0, false};
     
-    if (!ts) return result;
+    if (!tft || !initialized) return result;
     
-    // Ensure initialized
-    if (!ensureInitialized()) return result;
+    uint16_t rawX, rawY;
     
-    if (!ts->touched()) {
+    // Get raw touch coordinates from TFT_eSPI
+    bool touched = tft->getTouchRaw(&rawX, &rawY);
+    
+    if (!touched) {
         return result;
     }
     
-    TS_Point raw = ts->getPoint();
+    // TFT_eSPI doesn't provide pressure, so we use a dummy value
+    uint16_t rawZ = 1000;  // Simulated pressure
     
-    // Check pressure threshold
-    if (raw.z < TOUCH_PRESSURE_THRESHOLD) {
+    // Filter out spurious readings
+    if (rawX < 50 && rawY < 50) {
         return result;
     }
     
-    // Filter out spurious readings (z=4095 with x,y near 0 means floating/no touch)
-    if (raw.z >= 4090 && raw.x < 50 && raw.y < 50) {
-        return result;
-    }
-    
-    return mapAndInvertPoint(raw);
+    return mapAndInvertPoint(rawX, rawY, rawZ);
 }
 
-TouchPoint TouchScreenModule::mapAndInvertPoint(TS_Point raw) {
-    Serial.println("TouchScreenModule: mapAndInvertPoint");
+TouchPoint TouchScreenModule::mapAndInvertPoint(uint16_t rawX, uint16_t rawY, uint16_t rawZ) {
     TouchPoint mapped;
     
     // Map raw coordinates to screen coordinates
-    int sx = map(raw.x, RAW_X_MIN, RAW_X_MAX, 0, SCREEN_WIDTH);
-    int sy = map(raw.y, RAW_Y_MIN, RAW_Y_MAX, 0, SCREEN_HEIGHT);
+    int sx = map(rawX, RAW_X_MIN, RAW_X_MAX, 0, SCREEN_WIDTH);
+    int sy = map(rawY, RAW_Y_MIN, RAW_Y_MAX, 0, SCREEN_HEIGHT);
     
     // Apply inversion/flip (from your calibration)
     sx = SCREEN_WIDTH - sx;
@@ -111,12 +83,12 @@ TouchPoint TouchScreenModule::mapAndInvertPoint(TS_Point raw) {
     // Constrain to screen bounds
     mapped.x = constrain(sx, 0, SCREEN_WIDTH - 1);
     mapped.y = constrain(sy, 0, SCREEN_HEIGHT - 1);
-    mapped.z = raw.z;
+    mapped.z = rawZ;
     mapped.valid = true;
     
     // Debug output
     Serial.printf("Touch: raw(%d,%d) -> screen(%d,%d) z=%d\n", 
-                  raw.x, raw.y, mapped.x, mapped.y, mapped.z);
+                  rawX, rawY, mapped.x, mapped.y, mapped.z);
     
     return mapped;
 }

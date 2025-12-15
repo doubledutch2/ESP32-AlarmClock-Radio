@@ -26,23 +26,17 @@ DisplayILI9341::DisplayILI9341(int8_t cs, int8_t dc, int8_t rst, int8_t mosi, in
     clockRadius = 65;
 }
 
-// Inside DisplayILI9341::begin()
 void DisplayILI9341::begin() {
-    Serial.println("ILI9341: Calling tft.init()");
     tft.init();
-    Serial.println("ILI9341: tft.init() done.");
-    tft.setRotation(1); 
+    tft.setRotation(1); // Landscape (320x240)
     
     if (backlightPin >= 0) {
-        Serial.printf("ILI9341: Initializing Backlight on pin %d\n", backlightPin);
         pinMode(backlightPin, OUTPUT);
-        ledcChannel = ledcAttach(backlightPin, 5000, 8);
+        ledcAttach(backlightPin, 5000, 8);
         setBrightness(brightness);
-        Serial.println("ILI9341: Backlight done.");
     }
     
     clear();
-    Serial.println("ILI9341: Clear done. Display should be black.");
 }
 
 void DisplayILI9341::clear() {
@@ -65,14 +59,9 @@ void DisplayILI9341::resetCache() {
 }
 
 void DisplayILI9341::setBrightness(uint8_t level) {
+    brightness = level;
     if (backlightPin >= 0) {
-        brightness = level;
-        // USE THE CAPTURED CHANNEL NUMBER
-        ledcWrite(ledcChannel, brightness); // <-- Change line
-        
-        // Now you can safely add the debug log
-        Serial.printf("BL Pin %d (Channel %d): Brightness Set to %d/255 at %lu ms\n", 
-                      backlightPin, ledcChannel, brightness, millis());
+        ledcWrite(backlightPin, brightness);
     }
 }
 
@@ -255,7 +244,6 @@ void DisplayILI9341::drawText(int16_t x, int16_t y, const char* text, uint16_t c
     tft.setCursor(x, y);
     tft.setTextColor(color);
     tft.setTextSize(size);
-    tft.setTextFont(1); // Set to default font (8x8)
     tft.print(text);
 }
 

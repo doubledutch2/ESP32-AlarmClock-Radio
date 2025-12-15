@@ -1,8 +1,7 @@
 #ifndef TOUCHSCREEN_MODULE_H
 #define TOUCHSCREEN_MODULE_H
 
-#include <XPT2046_Touchscreen.h>
-#include "Config.h"
+#include <TFT_eSPI.h>
 
 // Touch calibration values (from your working example)
 #define RAW_X_MIN 300
@@ -14,7 +13,7 @@
 #define SCREEN_HEIGHT 240
 
 // Touch pressure threshold
-#define TOUCH_PRESSURE_THRESHOLD 5
+#define TOUCH_PRESSURE_THRESHOLD 600  // TFT_eSPI uses different scale
 
 struct TouchPoint {
     int x;
@@ -25,22 +24,17 @@ struct TouchPoint {
 
 class TouchScreenModule {
 private:
-    XPT2046_Touchscreen* ts;
-    int touchCS;
-    int touchIRQ;
-    bool initialized;  // NEW: Track if begin() has been called
+    TFT_eSPI* tft;  // Use TFT_eSPI instead of XPT2046_Touchscreen
+    bool initialized;
     
     // Debouncing
     unsigned long lastTouchTime;
     static const unsigned long DEBOUNCE_DELAY = 200;
-    
-    // Lazy initialization
-    bool ensureInitialized();  // NEW: Call begin() only when needed
 
 public:
-    TouchScreenModule(int cs, int irq);
+    TouchScreenModule(TFT_eSPI* tftPtr);  // Changed constructor - takes TFT_eSPI pointer
     
-    bool begin();
+    bool begin();  // Simplified - TFT_eSPI handles initialization
     bool isTouched();
     TouchPoint getPoint();
     
@@ -48,7 +42,7 @@ public:
     bool isTouchInArea(int x, int y, int w, int h);
     
 private:
-    TouchPoint mapAndInvertPoint(TS_Point raw);
+    TouchPoint mapAndInvertPoint(uint16_t rawX, uint16_t rawY, uint16_t rawZ);
 };
 
 #endif

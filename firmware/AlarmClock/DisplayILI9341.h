@@ -47,7 +47,6 @@ private:
     int16_t clockCenterX;
     int16_t clockCenterY;
     int16_t clockRadius;
-    uint8_t ledcChannel; // <-- ADD THIS LINE
     
     void drawHourHand(uint8_t hour, uint8_t minute, bool erase);
     void drawMinuteHand(uint8_t minute, bool erase);
@@ -60,6 +59,9 @@ public:
     void clear();
     void setBrightness(uint8_t level);
     uint8_t getBrightness();
+    
+    // Get the underlying TFT_eSPI object (needed for touch)
+    TFT_eSPI* getTFT() { return &tft; }  // NEW: Expose TFT object
     
     // Smart update functions (only redraw if changed)
     void updateTime(uint8_t hour, uint8_t minute, uint8_t second);
