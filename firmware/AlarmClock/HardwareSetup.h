@@ -27,6 +27,8 @@ private:
     
     int lastVolumePotValue;
     uint8_t brightnessLevel;
+    int fontHeight = 20;
+    int lastRow     = 60;
 
 public:
     HardwareSetup();
@@ -57,6 +59,7 @@ private:
     void initFMRadio();
     void initLED();
     void initTouchScreen();  // NEW
+    void doI2CScan();
     
     void handleVolumeControl();
     void handleBrightnessButton();

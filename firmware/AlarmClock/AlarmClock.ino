@@ -29,11 +29,14 @@ const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;
 void loadStationsFromStorage() {
   if (!hardware || !hardware->getStorage()) return;
   
+  int savedCount = 0;
   StorageModule* storage = hardware->getStorage();
-  int savedCount = storage->getInternetStationCount();
-  
-  Serial.printf("Loading %d stations from storage\n", savedCount);
-  
+
+  if (ENABLE_PRAM) {
+    savedCount = storage->getInternetStationCount();
+    
+    Serial.printf("Loading %d stations from storage\n", savedCount);
+  }
   // Free old station list if it exists
   if (stationList != nullptr) {
     delete[] stationList;
@@ -83,6 +86,7 @@ void loadStationsFromStorage() {
       }
     }
   }
+
 }
 
 void setup() {
@@ -93,20 +97,22 @@ void setup() {
   Serial.println("   ESP32 Alarm Clock Radio");
   Serial.println("====================================\n");
   
-  Serial.println("Going to initialize PSRAM");
-  if (psramInit()) {
-    Serial.print("PSRAM initialized. Total PSRAM size: ");
-    Serial.println(ESP.getPsramSize());
-    Serial.print("Free PSRAM: ");
-    Serial.println(ESP.getFreePsram());
-  } else {
-    Serial.println("PSRAM not found or not initialized.");
+  if (ENABLE_PRAM) {
+    Serial.println("Going to initialize PSRAM");
+    if (psramInit()) {
+      Serial.print("PSRAM initialized. Total PSRAM size: ");
+      Serial.println(ESP.getPsramSize());
+      Serial.print("Free PSRAM: ");
+      Serial.println(ESP.getFreePsram());
+    } else {
+      Serial.println("PSRAM not found or not initialized.");
+    }
+    
+    Serial.printf("LittleFS used: %d bytes\n", LittleFS.usedBytes());
+    Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
+    Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
+    Serial.println();
   }
-  
-  Serial.printf("LittleFS used: %d bytes\n", LittleFS.usedBytes());
-  Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
-  Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
-  Serial.println();
 
   // Initialize all hardware
   Serial.println("Before hardware setup");
@@ -130,18 +136,20 @@ void setup() {
   );
   
   // Initialize alarm controller with all required parameters
-  Serial.println("Creating AlarmController...");
-  alarmController = new AlarmController(
-    hardware->getAudio(),
-    hardware->getFMRadio(),
-    hardware->getDisplay(),
-    hardware->getStorage()
-  );
+  if (ENABLE_ALARMS) {
+    Serial.println("Creating AlarmController...");
+    alarmController = new AlarmController(
+      hardware->getAudio(),
+      hardware->getFMRadio(),
+      hardware->getDisplay(),
+      hardware->getStorage()
+    );
   
-  // CRITICAL: Load alarms from storage
-  Serial.println("Loading alarms from storage...");
-  alarmController->begin();
-  Serial.println("Alarms loaded.");
+    // CRITICAL: Load alarms from storage
+    Serial.println("Loading alarms from storage...");
+    alarmController->begin();
+    Serial.println("Alarms loaded.");
+  }
   
   // Setup state
   alarmState.hour = 7;
@@ -156,27 +164,30 @@ void setup() {
   uiState.lastButtonPress = 0;
   
   // Load configuration
-  if (hardware->getStorage() && hardware->getStorage()->isReady()) {
-    uint8_t h, m;
-    bool en;
-    float freq;
-    hardware->getStorage()->loadConfig(h, m, en, freq);
-    alarmState.hour = h;
-    alarmState.minute = m;
-    alarmState.enabled = en;
-    if (hardware->getFMRadio()) {
-      hardware->getFMRadio()->setFrequency(freq);
+  if (ENABLE_PRAM) {
+    if (hardware->getStorage() && hardware->getStorage()->isReady()) {
+      uint8_t h, m;
+      bool en;
+      float freq;
+      hardware->getStorage()->loadConfig(h, m, en, freq);
+      alarmState.hour = h;
+      alarmState.minute = m;
+      alarmState.enabled = en;
+      if (hardware->getFMRadio()) {
+        hardware->getFMRadio()->setFrequency(freq);
+      }
+      
+      // Load timezone settings (for future use - requires restart to apply)
+      long gmtOffset, dstOffset;
+      hardware->getStorage()->loadTimezone(gmtOffset, dstOffset);
+      Serial.printf("Timezone loaded: GMT offset %ld seconds, DST offset %d seconds\n", 
+                    gmtOffset, dstOffset);
     }
-    
-    // Load timezone settings (for future use - requires restart to apply)
-    long gmtOffset, dstOffset;
-    hardware->getStorage()->loadTimezone(gmtOffset, dstOffset);
-    Serial.printf("Timezone loaded: GMT offset %ld seconds, DST offset %d seconds\n", 
-                  gmtOffset, dstOffset);
   }
-  
   // Connect states to menu system
-  menu->setAlarmState(&alarmState);
+  if (ENABLE_ALARMS) {
+    menu->setAlarmState(&alarmState);
+  }
   menu->setUIState(&uiState);
   menu->setStationList(stationList, stationCount);
   
@@ -230,20 +241,22 @@ void loop() {
   }
   
   // Read buttons (all active LOW with INPUT_PULLUP)
-  bool btnUp = !digitalRead(BTN_UP);
-  bool btnDown = !digitalRead(BTN_DOWN);
-  bool btnSelect = !digitalRead(BTN_SELECT);
-  bool btnSnooze = !digitalRead(BTN_SNOOZE);
-  bool btnSetup = !digitalRead(BTN_SETUP);
-  
-  // Handle buttons (with debouncing in menu system)
-  if (now - uiState.lastButtonPress >= DEBOUNCE_DELAY) {
-    if (btnUp || btnDown || btnSelect || btnSnooze || btnSetup) {
-      menu->handleButtons(btnUp, btnDown, btnSelect, btnSnooze, btnSetup);
-      uiState.lastButtonPress = now;
+  if (ENABLE_BUTTONS) {
+    bool btnUp = !digitalRead(BTN_UP);
+    bool btnDown = !digitalRead(BTN_DOWN);
+    bool btnSelect = !digitalRead(BTN_SELECT);
+    bool btnSnooze = !digitalRead(BTN_SNOOZE);
+    bool btnSetup = !digitalRead(BTN_SETUP);
+    
+    // Handle buttons (with debouncing in menu system)
+    if (now - uiState.lastButtonPress >= DEBOUNCE_DELAY) {
+      if (btnUp || btnDown || btnSelect || btnSnooze || btnSetup) {
+        menu->handleButtons(btnUp, btnDown, btnSelect, btnSnooze, btnSetup);
+        uiState.lastButtonPress = now;
+      }
     }
   }
-  
+
   // Update display
   if (now - lastUpdate >= DISPLAY_UPDATE_INTERVAL || uiState.needsRedraw) {
     menu->updateDisplay();
@@ -253,7 +266,8 @@ void loop() {
   }
   
   // Check alarms
-  alarmController->checkAlarms(hardware->getTimeModule());
-  
+  if (ENABLE_ALARMS) {
+    alarmController->checkAlarms(hardware->getTimeModule());
+  }
   delay(1);
 }

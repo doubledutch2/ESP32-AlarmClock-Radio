@@ -36,25 +36,27 @@
 // Choose which display to use (comment/uncomment)
 // #define USE_OLED_DISPLAY    // Use I2C OLED display
 #define USE_TFT_DISPLAY  // Use SPI TFT display (ILI9341)
-#define ENABLE_TOUCHSCREEN true
 
-// Enable/disable modules
-#define ENABLE_AUDIO     true
-#define ENABLE_LED       true
-#define ENABLE_WEB       true
-#define ENABLE_FM_RADIO  true  // Set to true now that we're using FM
-
-// Audio Configuration
-#define ENABLE_STEREO    true   // true = 2 speakers, false = 1 speaker
+#define ENABLE_TOUCHSCREEN  true
+#define ENABLE_BUTTONS      true
+#define ENABLE_DRAW         true
+#define ENABLE_AUDIO        true
+#define ENABLE_STEREO       true
+#define ENABLE_LED          true
+#define ENABLE_ALARMS       true
+#define ENABLE_WEB          true
+#define ENABLE_FM_RADIO     false  // Set to true now that we're using FM
+#define ENABLE_PRAM         true
+#define ENABLE_I2C_SCAN     true
 
 // ===== Pin Definitions for ESP32-S3-DevKitC-1 =====
 // *** LOCKED - DO NOT CHANGE THESE PINS ***
 
 // I2C pins (Shared by OLED and RDA5807)
-#define I2C_SDA          8
-#define I2C_SCL          9
+#define I2C_SDA          21 // Green
+#define I2C_SCL          18 // Yellow
 
-// uint8_t rdaAddresses[] = {0x10, 0x11, 0};
+// uint8_t rdaAddresses[] = {0x10, 0x11, 0};7
 
 
 
@@ -103,7 +105,7 @@ Green: T_CS -> move to
 // If it's HIGH NC = connected to COM // I2C - MP3/Internet Radio
 // If it's LOW  NO = connected to COM
 
-#define ENABLE_TOUCHSCREEN     false
+#define ENABLE_TOUCHSCREEN     true
 #define INIT_TOUCHSCREEN_FIRST false
 
 #define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio

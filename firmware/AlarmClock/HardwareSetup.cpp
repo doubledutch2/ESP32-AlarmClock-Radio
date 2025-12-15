@@ -20,12 +20,14 @@ HardwareSetup::~HardwareSetup() {
 }
 
 bool HardwareSetup::begin() {
+    lastRow     = 25;
+
     Serial.println("HW - Init Display");
     initDisplay();
     
     Serial.println("HW - Init WiFi");
     initWiFi();
-    
+
     Serial.println("HW - Init Buttons");
     initButtons();
     
@@ -41,22 +43,26 @@ bool HardwareSetup::begin() {
     Serial.println("HW - Init Audio (this may take a moment...)");
     initAudio();
     Serial.println("HW - Audio init completed");
-    
+
     Serial.println("HW - Init FMRadio");
     initFMRadio();
     
     Serial.println("HW - Init WebServer");
     initWebServer();
-    
+
     Serial.println("HW - Init TouchScreen");
     initTouchScreen();
-    
+
+    Serial.println("HW - I2C Scan");
+    doI2CScan();
+
     Serial.println("HW - Init Done");
     Serial.println("===========================================");
     Serial.println("Preparing to clear display and show clock...");
-    
+    if (display) display->drawText(10, lastRow, "Init: DONE!", ILI9341_WHITE, 1);
+
     // Give user time to see init messages
-    delay(1000);
+    delay(3000);
     
     // FORCE clear the display multiple times if needed
     if (display) {
@@ -76,7 +82,7 @@ bool HardwareSetup::begin() {
     if (led) {
         led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
     }
-    
+
     Serial.println("===========================================");
     Serial.println("Hardware initialization complete!");
     Serial.println("===========================================");
@@ -112,44 +118,48 @@ void HardwareSetup::initButtons() {
 
 void HardwareSetup::initDisplay() {
     Serial.println("Initializing Display...");
-    // display = new DisplayILI9341(TFT_CS, TFT_DC, TFT_RST, TFT_MOSI, TFT_SCLK, TFT_MISO, TFT_BL);
     display = new DisplayILI9341(TFT_CS, TFT_DC, -1, TFT_MOSI, TFT_SCLK, TFT_MISO, TFT_BL);
     display->begin();
     display->setBrightness(200);
     display->clear();
-    display->drawText(10, 10, "Alarm Clock Starting...", ILI9341_WHITE, 2);
+    display->drawText(10, 10, "Alarm Clock Starting", ILI9341_WHITE, 2);
+    lastRow += fontHeight;
 }
 
 void HardwareSetup::initStorage() {
     Serial.println("Initializing Storage...");
     storage = new StorageModule();
     if (storage->begin()) {
-        if (display) display->drawText(10, 40, "Storage: OK", ILI9341_GREEN, 2);
+        if (display) display->drawText(10, lastRow, "Storage: OK", ILI9341_WHITE, 1);
         if (led) led->setColor(LEDModule::COLOR_YELLOW, BRIGHT_DIM);
     } else {
-        if (display) display->drawText(10, 40, "Storage: FAIL", ILI9341_RED, 2);
+        if (display) display->drawText(10, lastRow, "Storage: FAIL", ILI9341_RED, 1);
     }
+    lastRow += fontHeight;
 }
 
 void HardwareSetup::initWiFi() {
     Serial.println("Initializing WiFi...");
-    if (display) display->drawText(10, 60, "Connecting WiFi...", ILI9341_YELLOW, 2);    
+    if (display) display->drawText(10, lastRow, "Connecting WiFi:", ILI9341_WHITE, 1);    
     wifi = new WiFiModule(WIFI_SSID, WIFI_PASSWORD);
     if (wifi->connect()) {
         Serial.println("WiFi Connected!");
         if (display) {
-            display->drawText(10, 60, "WiFi: OK", ILI9341_GREEN, 2);
-            display->drawText(10, 80, wifi->getLocalIP().c_str(), ILI9341_CYAN, 1);
+            display->drawText(120, lastRow, "OK - ", ILI9341_WHITE, 1);
+            display->drawText(150, lastRow, wifi->getLocalIP().c_str(), ILI9341_WHITE, 1);
+
         }
         Serial.println("Set LED to Green");
         if (led) led->setColor(LEDModule::COLOR_GREEN, BRIGHT_DIM);
     } else {
         Serial.println("WiFi Connection Failed!");
-        if (display) display->drawText(10, 60, "WiFi: FAIL", ILI9341_RED, 2);
+        if (display) display->drawText(80, lastRow, "FAIL", ILI9341_RED, 1);
         Serial.println("Set LED to Red");
         if (led) led->setColor(LEDModule::COLOR_RED, BRIGHT_FULL);
     }
     Serial.println("WiFi Done");
+    lastRow += fontHeight;
+
 }
 
 void HardwareSetup::initTime() {
@@ -168,10 +178,12 @@ void HardwareSetup::initTime() {
     
     timeModule = new TimeModule("pool.ntp.org", gmtOffset, dstOffset);
     if (timeModule->begin(WIFI_SSID, WIFI_PASSWORD)) {
-        if (display) display->drawText(10, 100, "Time: OK", ILI9341_GREEN, 2);
+        if (display) display->drawText(10, lastRow, "Time: OK", ILI9341_WHITE, 1);
     } else {
-        if (display) display->drawText(10, 100, "Time: FAIL", ILI9341_RED, 2);
+        if (display) display->drawText(10, lastRow, "Time: FAIL", ILI9341_RED, 1);
     }
+    lastRow += fontHeight;
+
 }
 
 void HardwareSetup::initWebServer() {
@@ -199,10 +211,15 @@ void HardwareSetup::initWebServer() {
         // Now call begin() - this will set up WebServerAlarms routes
         webServer->begin(MDNS_NAME);
         
-        if (display) display->drawText(10, 120, "Web: OK", ILI9341_GREEN, 2);
+        if (display) display->drawText(10, lastRow, "Web: OK", ILI9341_WHITE, 1);
         Serial.printf("Web interface: http://%s.local or http://%s\n", 
                      MDNS_NAME, wifi->getLocalIP().c_str());
     }
+    else {
+        if (display) display->drawText(10, lastRow, "Web: Disabled or no WiFi", ILI9341_WHITE, 1);
+    }
+    lastRow += fontHeight;
+
 }
 
 void HardwareSetup::initAudio() {
@@ -215,15 +232,77 @@ void HardwareSetup::initAudio() {
             audio->begin();
             audio->setVolume(3);
             Serial.println("AudioModule initialization complete");
-            if (display) display->drawText(10, 140, "Audio: OK", ILI9341_GREEN, 2);
+            if (display) display->drawText(10, lastRow, "Audio: OK", ILI9341_WHITE, 1);
         } else {
             Serial.println("Failed to create AudioModule");
-            if (display) display->drawText(10, 140, "Audio: FAIL", ILI9341_RED, 2);
+            if (display) display->drawText(10, lastRow, "Audio: FAIL", ILI9341_RED, 1);
         }
     } else {
+        if (display) display->drawText(10, lastRow, "Init Audio: Disabled", ILI9341_WHITE, 1);
         Serial.println("Audio disabled in config");
     }
+    lastRow += fontHeight;
 }// Update begin() - Force display clear and add better error handling
+
+void HardwareSetup::doI2CScan() {
+
+    if (ENABLE_I2C_SCAN) {
+        int  sizeBuf = 100;
+        char displayBuf[100] = "";
+        char hexChar[10];
+
+        if (display) display->drawText(10, lastRow, "I2C Scan:", ILI9341_WHITE, 1);
+        Wire.begin(I2C_SDA, I2C_SCL);
+        delay(100);
+        byte error, address;
+        int nDevices;
+
+        Serial.println("Scanning...");
+
+        nDevices = 0;
+        for(address = 1; address < 127; address++ ) {
+            Wire.beginTransmission(address);
+            error = Wire.endTransmission();
+
+            if (error == 0) {
+                if (nDevices == 0) {
+                    Serial.print("I2C device found at address: ");
+                }
+                else {
+                    Serial.print(", ");
+                }
+                
+                sprintf(hexChar,"0x%02x",address);
+                Serial.print("HexChar: ");
+                Serial.println(hexChar);
+                if (strlen(displayBuf) < sizeBuf - 5) {
+                    if (nDevices > 0) {
+                        strcat(displayBuf,", ");
+                    }
+                    strcat(displayBuf,hexChar);
+                }
+                nDevices++;
+            }
+
+        }  
+
+        if (nDevices == 0) {
+            Serial.println("No I2C devices found\n");
+            if (display) display->drawText(10, lastRow, "I2C Scan: No Devices", ILI9341_WHITE, 1);
+        }
+        else {
+            if (display) {
+                display->drawText(10, lastRow, "I2C Scan:", ILI9341_WHITE, 1);
+                display->drawText(85, lastRow,displayBuf,ILI9341_WHITE,1);
+            }
+            Serial.println(displayBuf);
+        }
+    }
+    else {
+            if (display) display->drawText(10, lastRow, "I2C Scan: Disabled", ILI9341_WHITE, 1);
+    }
+    lastRow += fontHeight;
+}
 
 void HardwareSetup::initFMRadio() {
     if (ENABLE_FM_RADIO) {
@@ -233,20 +312,29 @@ void HardwareSetup::initFMRadio() {
         fmRadio = new FMRadioModule();
         if (fmRadio->begin()) {
             Serial.println("FM Radio initialized");
-            if (display) display->drawText(10, 160, "FM Radio: OK", ILI9341_GREEN, 2);
+            if (display) display->drawText(10, lastRow, "FM Radio: OK", ILI9341_WHITE, 1);
         } else {
             Serial.println("FM Radio initialization failed!");
-            if (display) display->drawText(10, 160, "FM Radio: FAIL", ILI9341_RED, 2);
+            if (display) display->drawText(10, lastRow, "FM Radio: FAIL", ILI9341_RED, 1);
         }
+    } 
+    else {
+        if (display) display->drawText(10, lastRow, "FM Radio: Disabled", ILI9341_WHITE, 1);
     }
+    lastRow += fontHeight;
 }
 
 void HardwareSetup::initLED() {
     if (ENABLE_LED) {
+        if (display) display->drawText(10, lastRow, "Init LED: OK", ILI9341_WHITE, 1);
         led = new LEDModule(LED_PIN);
         led->begin();
         led->setColor(LEDModule::COLOR_RED, BRIGHT_DIM);
     }
+    else {
+        if (display) display->drawText(10, lastRow, "Init LED: Disabled", ILI9341_WHITE, 1);
+    }
+    lastRow += fontHeight;
 }
 
 void HardwareSetup::handleVolumeControl() {
@@ -262,6 +350,9 @@ void HardwareSetup::handleVolumeControl() {
 }
 
 void HardwareSetup::handleBrightnessButton() {
+    if (!ENABLE_BUTTONS) {
+        return;
+    }
     static bool brightnessPressed = false;
     int brightnessButton = digitalRead(BRIGHTNESS_PIN);
     
@@ -269,7 +360,7 @@ void HardwareSetup::handleBrightnessButton() {
         brightnessPressed = true;
         brightnessLevel = (brightnessLevel + 1) % 6;
         if (display) display->setBrightness(brightnessLevel * 50);
-        Serial.printf("Brightness: %d\n", brightnessLevel);
+        // Serial.printf("Brightness: %d\n", brightnessLevel);
     } else if (brightnessButton == LOW) {
         brightnessPressed = false;
     }
@@ -306,17 +397,22 @@ void HardwareSetup::initTouchScreen() {
         if (touchScreen) {
             bool success = touchScreen->begin();
             if (success) {
+                if (display) display->drawText(10, lastRow, "Init Touch: OK", ILI9341_WHITE, 1);
                 Serial.println("TouchScreen: Initialized successfully (TFT_eSPI built-in)");
             } else {
+                if (display) display->drawText(10, lastRow, "Init Touch: Fail", ILI9341_WHITE, 1);
                 Serial.println("WARNING: TouchScreen initialization failed");
                 delete touchScreen;
                 touchScreen = nullptr;
             }
         } else {
+            if (display) display->drawText(10, lastRow, "Init Touch: can not create touch", ILI9341_WHITE, 1);
             Serial.println("ERROR: Failed to create TouchScreenModule");
         }
     #else
         Serial.println("TouchScreen disabled in config (ENABLE_TOUCHSCREEN = false)");
+        if (display) display->drawText(10, lastRow, "Init Touch: disabled", ILI9341_WHITE, 1);
         touchScreen = nullptr;
     #endif
+    lastRow += fontHeight;
 }
