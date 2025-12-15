@@ -7,7 +7,7 @@
 6 - BTN Down / BTN Sooze
 7 - I2S - LRC
 8 - I2S - BCLK
-9 - TFT RST ?????
+9 - TFT RST 
 10 -
 11 - Touch DIN / TFT MOSI
 12 - Touch CLK / TFT SCLK

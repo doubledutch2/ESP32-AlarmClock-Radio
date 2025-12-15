@@ -1,13 +1,3 @@
-https://github.com/doubledutch2/ESP32-AlarmClock-Radio
-
-I made a number of changes and updated a number of files in the attached git repository. I also added a folder "AlarmSounds". I would like to create an additional webpage (maybe in a new file to reduce complexity), based on the attached code, where I can configure up to 3 Alarms. These alarms can be set to "Once Only", "Weekdays Only", "Weekends Only", "Every Day" for a specific time.
-
-When any of the 3 alarms are triggered, I would either like to play one off the internet Audio Stream, a Radio Station (when the radio model is collected) OR play/loop one of the Alarm Sound mp3 files For every alarm time, I want a test button to hear what ever I selected play on the speakers.
-
-If possible I would like to preload these mp3 files when uploading the code to the ESP32, but I also want to be able to add more alarm mp3 files later. 
-
-With the above logic - I no longer need the buzzer logic so tell me how to remove that.
-
 -------------------
 - For the VOL_PIN - when rebooting the ESP32, sometime you need to turn the potentiometer clockwise to turn up the volume, other times you need to turn it any-clockwise. Some suggested that instead of relying only on the basic analogRead(), you should explicitly configure the specific ADC unit (ADC1 or ADC2) and its attenuation. This ensures a consistent setup on every boot.
    
@@ -19,13 +9,6 @@ UI Changes
 
 - TFT
 
-Boot Logic: Clear Screen then write a line, corresponding to the hardwares setup entry sequence with what you are doing and an red X for failure or a green tick ffor success, each hardwares setup line has its own line, same font, same colour then wait for 3 seconds before displaying the alarm screen. Font size, colour and 3 second delay to be configured in Config.h
-
-Alarm Screen: Replace Wifi OK with standard wifi symbol showing the wifi signal strength. Change date format to Wed, 21 Nov 2025. Remove navigation options, ONLY show alarms if they are switch on: e.g. 
-
 "1 - 07:30 - Daily"
 "3 - 21:00 - Once"
 
-- It still doesn't work and I narrowed it down to the statement "bool success = ts->begin()" in TouchScreenModule.cpp. If I comment that out - it works BUT I was expecting to see a Setup Button on the Clock-Face Screen which isn't there?
-
-I can get both the ILI9341 and HR2046 to initialize correctly but only if I initialize the HR2046 first. But after doing so the touched() function never triggers so no touch is ever detected.

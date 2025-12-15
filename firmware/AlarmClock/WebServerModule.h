@@ -27,7 +27,7 @@ private:
     InternetRadioStation* stationList;
     int stationCount;
     WebServerAlarms* alarmServer;
-    AlarmController* alarmController;  // NEW: Reference to alarm controller
+    AlarmController* alarmController;
     
     void handleRoot();
     void handleStations();
@@ -36,6 +36,7 @@ private:
     void handleSettings();
     void handleSaveTimezone();
     void handlePlay();
+    void handleStop();          // NEW: Stop/pause handler
     void handleNotFound();
     
     String getHTMLHeader();
@@ -56,7 +57,7 @@ public:
     void setAudioModule(AudioModule* aud);      
     void setFMRadioModule(FMRadioModule* fm);   
     void setStationList(InternetRadioStation* stations, int count);  
-    void setAlarmController(AlarmController* ctrl); // Mine
+    void setAlarmController(AlarmController* ctrl);
 };
 
 #endif

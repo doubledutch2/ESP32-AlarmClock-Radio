@@ -37,13 +37,13 @@ void WebServerModule::begin(const char* mdnsName) {
     server->on("/settings", [this]() { handleSettings(); });
     server->on("/save_timezone", HTTP_POST, [this]() { handleSaveTimezone(); });
     server->on("/play", HTTP_POST, [this]() { handlePlay(); });
+    server->on("/stop", HTTP_POST, [this]() { handleStop(); });  // NEW: Stop/Pause route
     server->onNotFound([this]() { handleNotFound(); });
 
     Serial.println("Main routes registered");
     
     // Setup alarm routes if all required modules are available
-    // if (storage && audioModule && fmRadioModule) {
-    if (storage && audioModule ) {
+    if (storage && audioModule) {
         Serial.println("Creating WebServerAlarms...");
         alarmServer = new WebServerAlarms(server, storage, audioModule, fmRadioModule);
         
@@ -216,6 +216,18 @@ void WebServerModule::handlePlay() {
     }
 }
 
+// NEW: Handle stop/pause request
+void WebServerModule::handleStop() {
+    Serial.println("Web request to stop audio");
+    
+    if (audioModule) {
+        audioModule->stop();
+        server->send(200, "text/plain", "Audio stopped");
+    } else {
+        server->send(500, "text/plain", "Audio module not available");
+    }
+}
+
 void WebServerModule::handleNotFound() {
     String message = "File Not Found\n\n";
     message += "URI: ";
@@ -350,6 +362,13 @@ String WebServerModule::getHTMLHeader() {
         .btn-danger:hover {
             background: #c82333;
         }
+        .btn-warning {
+            background: #ffc107;
+            color: #000;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
         .station-card {
             background: #f8f9fa;
             padding: 20px;
@@ -463,6 +482,7 @@ String WebServerModule::getMainHTML() {
             </div>
             
             <button class="btn-primary" onclick="playCustom()">▶ Play Now</button>
+            <button class="btn-warning" onclick="stopAudio()">⏸ Pause</button>
             
             <h2 style="margin-top: 40px; margin-bottom: 20px; color: #495057;">Your Saved Stations</h2>
 )html";
@@ -509,6 +529,19 @@ String WebServerModule::getMainHTML() {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: 'name=' + encodeURIComponent(name) + '&url=' + encodeURIComponent(url)
+                })
+                .then(response => response.text())
+                .then(data => {
+                    showAlert(data);
+                })
+                .catch(error => {
+                    showAlert('Error: ' + error, true);
+                });
+            }
+            
+            function stopAudio() {
+                fetch('/stop', {
+                    method: 'POST'
                 })
                 .then(response => response.text())
                 .then(data => {
