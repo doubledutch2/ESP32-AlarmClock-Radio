@@ -7,14 +7,14 @@
 6 - BTN Down / BTN Sooze
 7 - I2S - LRC
 8 - I2S - BCLK
-9 - I2S - DOUT / TFT RST ?????
+9 - TFT RST ?????
 10 -
 11 - Touch DIN / TFT MOSI
 12 - Touch CLK / TFT SCLK
 13 - Touch_DO / TFT Miso
 14 - BTN Setup
 15 - [Bootstrap Don't use] / TFT DC
-16 - I2S: DIN???
+16 - I2S: DOUT
 17 - PIN: Mode Switch
 18 - I2C SCL: Yellow
 19 - [Reserved USB]
