@@ -42,7 +42,8 @@ void WebServerModule::begin(const char* mdnsName) {
     Serial.println("Main routes registered");
     
     // Setup alarm routes if all required modules are available
-    if (storage && audioModule && fmRadioModule) {
+    // if (storage && audioModule && fmRadioModule) {
+    if (storage && audioModule ) {
         Serial.println("Creating WebServerAlarms...");
         alarmServer = new WebServerAlarms(server, storage, audioModule, fmRadioModule);
         

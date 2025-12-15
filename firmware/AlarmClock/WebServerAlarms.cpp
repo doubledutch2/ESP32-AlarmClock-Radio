@@ -123,10 +123,12 @@ void WebServerAlarms::handleTestAlarm() {
             break;
             
         case SOUND_FM_RADIO:
-            if (server->hasArg("fmFreq") && fmRadio) {
-                float freq = server->arg("fmFreq").toFloat();
-                fmRadio->setFrequency(freq);
-                server->send(200, "text/plain", "Testing FM radio");
+            if (ENABLE_FM_RADIO) {
+                if (server->hasArg("fmFreq") && fmRadio) {
+                    float freq = server->arg("fmFreq").toFloat();
+                    fmRadio->setFrequency(freq);
+                    server->send(200, "text/plain", "Testing FM radio");
+                }
             }
             break;
             

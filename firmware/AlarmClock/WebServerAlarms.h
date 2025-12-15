@@ -7,6 +7,7 @@
 #include "FMRadioModule.h"
 #include "AlarmData.h"
 #include "CommonTypes.h"
+#include "Config.h"
 
 // Forward declaration
 class AlarmController;

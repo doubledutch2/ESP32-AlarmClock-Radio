@@ -108,7 +108,7 @@ void setup() {
       Serial.println("PSRAM not found or not initialized.");
     }
     
-    Serial.printf("LittleFS used: %d bytes\n", LittleFS.usedBytes());
+    // Serial.printf("LittleFS used: %d bytes\n", LittleFS.usedBytes());
     Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
     Serial.println();
