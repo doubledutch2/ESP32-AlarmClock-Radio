@@ -5,12 +5,12 @@
 #include "DisplayILI9341.h"
 #include "TimeModule.h"
 #include "FMRadioModule.h"
-#include "StorageModule.h"
+#include "StorageModule.h"  // IMPORTANT: This must come before using FeatureFlags
 #include "WiFiModule.h"
 #include "AudioModule.h"
 #include "WebServerModule.h"
 #include "LEDModule.h"
-#include "TouchScreenModule.h"  // NEW
+#include "TouchScreenModule.h"
 #include <SPI.h>
 
 class HardwareSetup {
@@ -23,7 +23,7 @@ private:
     AudioModule* audio;
     WebServerModule* webServer;
     LEDModule* led;
-    TouchScreenModule* touchScreen;  // NEW
+    TouchScreenModule* touchScreen;
     
     int lastVolumePotValue;
     uint8_t brightnessLevel;
@@ -46,9 +46,10 @@ public:
     AudioModule* getAudio() { return audio; }
     WebServerModule* getWebServer() { return webServer; }
     LEDModule* getLED() { return led; }
-    TouchScreenModule* getTouchScreen() { return touchScreen; }  // NEW
+    TouchScreenModule* getTouchScreen() { return touchScreen; }
     
 private:
+    void loadSavedSettings();  // NEW: Load settings from NVS
     void initButtons();
     void initDisplay();
     void initStorage();
@@ -58,7 +59,7 @@ private:
     void initAudio();
     void initFMRadio();
     void initLED();
-    void initTouchScreen();  // NEW
+    void initTouchScreen();
     void doI2CScan();
     
     void handleVolumeControl();

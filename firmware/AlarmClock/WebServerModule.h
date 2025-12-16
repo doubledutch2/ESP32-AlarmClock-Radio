@@ -10,6 +10,7 @@
 // Forward declarations
 class AudioModule;
 class FMRadioModule;
+class DisplayILI9341;
 class WebServerAlarms;
 class AlarmController;
 
@@ -24,24 +25,30 @@ private:
     TimeModule* timeModule;
     AudioModule* audioModule;
     FMRadioModule* fmRadioModule;
+    DisplayILI9341* displayModule;
     InternetRadioStation* stationList;
     int stationCount;
     WebServerAlarms* alarmServer;
     AlarmController* alarmController;
     
     void handleRoot();
+    void handleControl();
     void handleStations();
     void handleAddStation();
     void handleDeleteStation();
     void handleSettings();
     void handleSaveTimezone();
+    void handleSaveFeatures();
+    void handleSetVolume();
+    void handleSetBrightness();
     void handlePlay();
-    void handleStop();          // NEW: Stop/pause handler
+    void handleStop();
     void handleNotFound();
     
     String getHTMLHeader();
     String getHTMLFooter();
     String getMainHTML();
+    String getControlHTML();
     String getStationsHTML();
     String getSettingsHTML();
 
@@ -55,7 +62,8 @@ public:
     void setStorageModule(StorageModule* stor);
     void setTimeModule(TimeModule* time);
     void setAudioModule(AudioModule* aud);      
-    void setFMRadioModule(FMRadioModule* fm);   
+    void setFMRadioModule(FMRadioModule* fm);
+    void setDisplayModule(DisplayILI9341* disp);
     void setStationList(InternetRadioStation* stations, int count);  
     void setAlarmController(AlarmController* ctrl);
 };

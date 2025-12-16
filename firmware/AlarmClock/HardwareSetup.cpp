@@ -1,4 +1,6 @@
 #include "HardwareSetup.h"
+#include "FeatureFlags.h"
+#include "StorageModule.h"  // ADD THIS LINE EXPLICITLY
 
 HardwareSetup::HardwareSetup() 
     : display(nullptr), timeModule(nullptr), fmRadio(nullptr), 
@@ -20,7 +22,7 @@ HardwareSetup::~HardwareSetup() {
 }
 
 bool HardwareSetup::begin() {
-    lastRow     = 25;
+    lastRow = 25;
 
     Serial.println("HW - Init Display");
     initDisplay();
@@ -36,6 +38,9 @@ bool HardwareSetup::begin() {
     
     Serial.println("HW - Init Storage");
     initStorage();
+    
+    // Load saved settings after storage is initialized
+    loadSavedSettings();
     
     Serial.println("HW - Init Time");
     initTime();
@@ -88,6 +93,44 @@ bool HardwareSetup::begin() {
     Serial.println("===========================================");
     
     return true;
+}
+
+void HardwareSetup::loadSavedSettings() {
+    if (!storage || !storage->isReady()) {
+        Serial.println("Storage not ready, using defaults");
+        return;
+    }
+    
+    Serial.println("Loading saved settings from NVS...");
+    
+    // Load volume
+    uint8_t savedVolume = storage->loadVolume(3);
+    if (audio) {
+        audio->setVolume(savedVolume);
+        Serial.printf("Volume set to: %d\n", savedVolume);
+    }
+    
+    // Load brightness
+    uint8_t savedBrightness = storage->loadBrightness(200);
+    if (display) {
+        display->setBrightness(savedBrightness);
+        Serial.printf("Brightness set to: %d\n", savedBrightness);
+    }
+    
+    // Load feature flags
+    FeatureFlags flags;
+    storage->loadFeatureFlags(flags);
+    Serial.println("Feature flags loaded:");
+    Serial.printf("  TouchScreen: %s\n", flags.enableTouchScreen ? "ON" : "OFF");
+    Serial.printf("  Buttons: %s\n", flags.enableButtons ? "ON" : "OFF");
+    Serial.printf("  Draw: %s\n", flags.enableDraw ? "ON" : "OFF");
+    Serial.printf("  Audio: %s\n", flags.enableAudio ? "ON" : "OFF");
+    Serial.printf("  LED: %s\n", flags.enableLED ? "ON" : "OFF");
+    Serial.printf("  Alarms: %s\n", flags.enableAlarms ? "ON" : "OFF");
+    Serial.printf("  FM Radio: %s\n", flags.enableFMRadio ? "ON" : "OFF");
+    
+    // Note: Feature flags affect hardware initialization which happens in Config.h
+    // These are loaded here for display but require restart to take effect
 }
 
 void HardwareSetup::loop() {
@@ -159,7 +202,6 @@ void HardwareSetup::initWiFi() {
     }
     Serial.println("WiFi Done");
     lastRow += fontHeight;
-
 }
 
 void HardwareSetup::initTime() {
@@ -183,7 +225,6 @@ void HardwareSetup::initTime() {
         if (display) display->drawText(10, lastRow, "Time: FAIL", ILI9341_RED, 1);
     }
     lastRow += fontHeight;
-
 }
 
 void HardwareSetup::initWebServer() {
@@ -207,6 +248,10 @@ void HardwareSetup::initWebServer() {
             webServer->setFMRadioModule(fmRadio);
             Serial.println("WebServer: FM Radio module set");
         }
+        if (display) {
+            webServer->setDisplayModule(display);
+            Serial.println("WebServer: Display module set");
+        }
         
         // Now call begin() - this will set up WebServerAlarms routes
         webServer->begin(MDNS_NAME);
@@ -219,19 +264,24 @@ void HardwareSetup::initWebServer() {
         if (display) display->drawText(10, lastRow, "Web: Disabled or no WiFi", ILI9341_WHITE, 1);
     }
     lastRow += fontHeight;
-
 }
 
 void HardwareSetup::initAudio() {
     if (ENABLE_AUDIO) {
         Serial.println("Initializing Audio...");
-        audio = new AudioModule(I2S_BCLK, I2S_LRC, I2S_DOUT, MAX_VOLUME);
+        
+        // Load saved volume or use default
+        uint8_t savedVolume = 3;
+        if (storage && storage->isReady()) {
+            savedVolume = storage->loadVolume(3);
+        }
+        
+        audio = new AudioModule(I2S_BCLK, I2S_LRC, I2S_DOUT, MAX_VOLUME, savedVolume);
         
         if (audio) {
             Serial.println("AudioModule created, calling begin()...");
             audio->begin();
-            audio->setVolume(3);
-            Serial.println("AudioModule initialization complete");
+            Serial.printf("AudioModule initialization complete with volume: %d\n", savedVolume);
             if (display) display->drawText(10, lastRow, "Audio: OK", ILI9341_WHITE, 1);
         } else {
             Serial.println("Failed to create AudioModule");
@@ -242,10 +292,9 @@ void HardwareSetup::initAudio() {
         Serial.println("Audio disabled in config");
     }
     lastRow += fontHeight;
-}// Update begin() - Force display clear and add better error handling
+}
 
 void HardwareSetup::doI2CScan() {
-
     if (ENABLE_I2C_SCAN) {
         int  sizeBuf = 100;
         char displayBuf[100] = "";
@@ -283,7 +332,6 @@ void HardwareSetup::doI2CScan() {
                 }
                 nDevices++;
             }
-
         }  
 
         if (nDevices == 0) {
@@ -299,7 +347,7 @@ void HardwareSetup::doI2CScan() {
         }
     }
     else {
-            if (display) display->drawText(10, lastRow, "I2C Scan: Disabled", ILI9341_WHITE, 1);
+        if (display) display->drawText(10, lastRow, "I2C Scan: Disabled", ILI9341_WHITE, 1);
     }
     lastRow += fontHeight;
 }
@@ -346,6 +394,13 @@ void HardwareSetup::handleVolumeControl() {
         lastVolumePotValue = potValue;
         int newVolume = map(potValue, 0, 4095, 0, audio->getMaxVolume());
         audio->setVolume(newVolume);
+        
+        // Save to storage periodically (not on every change to avoid wear)
+        static unsigned long lastSave = 0;
+        if (millis() - lastSave > 5000 && storage) {  // Save every 5 seconds max
+            storage->saveVolume(newVolume);
+            lastSave = millis();
+        }
     }
 }
 
@@ -359,8 +414,13 @@ void HardwareSetup::handleBrightnessButton() {
     if (brightnessButton == HIGH && !brightnessPressed) {
         brightnessPressed = true;
         brightnessLevel = (brightnessLevel + 1) % 6;
-        if (display) display->setBrightness(brightnessLevel * 50);
-        // Serial.printf("Brightness: %d\n", brightnessLevel);
+        uint8_t newBrightness = brightnessLevel * 50;
+        if (display) {
+            display->setBrightness(newBrightness);
+        }
+        if (storage) {
+            storage->saveBrightness(newBrightness);
+        }
     } else if (brightnessButton == LOW) {
         brightnessPressed = false;
     }

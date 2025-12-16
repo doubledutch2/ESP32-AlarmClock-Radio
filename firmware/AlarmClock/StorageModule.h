@@ -5,11 +5,15 @@
 #include <LittleFS.h>
 #include "CommonTypes.h"
 #include "AlarmData.h"
+#include "FeatureFlags.h"
 
 #define MAX_STATIONS 20
 #define MAX_INTERNET_STATIONS 10
 
+// Feature flags structure
+
 class StorageModule {
+
 private:
     Preferences prefs;
     bool isInitialized;
@@ -53,8 +57,19 @@ public:
     bool saveTimezone(long gmtOffset, long dstOffset);
     bool loadTimezone(long &gmtOffset, long &dstOffset);
     
+    // Feature flags management
+    bool saveFeatureFlags(const FeatureFlags& flags);
+    bool loadFeatureFlags(FeatureFlags& flags);
+    
+    // Volume and brightness settings
+    bool saveVolume(uint8_t volume);
+    uint8_t loadVolume(uint8_t defaultValue = 3);
+    bool saveBrightness(uint8_t brightness);
+    uint8_t loadBrightness(uint8_t defaultValue = 200);
+    
     // Utility
     void factoryReset();
+
 };
 
 #endif

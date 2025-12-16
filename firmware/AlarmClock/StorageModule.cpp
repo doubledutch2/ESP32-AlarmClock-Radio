@@ -317,4 +317,77 @@ bool StorageModule::loadAlarm(int index, AlarmConfig& alarm) {
     alarm.lastDay = prefs.getUChar((String(prefix) + "day").c_str(), 0);
     
     return true;
+} // Here
+
+// Add these methods to your existing StorageModule.cpp file
+// Place them after your existing methods, before the final closing brace
+
+// ===== FEATURE FLAGS =====
+bool StorageModule::saveFeatureFlags(const FeatureFlags& flags) {
+    if (!isInitialized) return false;
+    
+    prefs.putBool("feat_touch", flags.enableTouchScreen);
+    prefs.putBool("feat_btn", flags.enableButtons);
+    prefs.putBool("feat_draw", flags.enableDraw);
+    prefs.putBool("feat_audio", flags.enableAudio);
+    prefs.putBool("feat_stereo", flags.enableStereo);
+    prefs.putBool("feat_led", flags.enableLED);
+    prefs.putBool("feat_alarms", flags.enableAlarms);
+    prefs.putBool("feat_web", flags.enableWeb);
+    prefs.putBool("feat_fm", flags.enableFMRadio);
+    prefs.putBool("feat_pram", flags.enablePRAM);
+    prefs.putBool("feat_i2c", flags.enableI2CScan);
+    
+    Serial.println("Feature flags saved to NVS");
+    return true;
 }
+
+bool StorageModule::loadFeatureFlags(FeatureFlags& flags) {
+    if (!isInitialized) return false;
+    
+    // Load with defaults from constructor
+    flags.enableTouchScreen = prefs.getBool("feat_touch", true);
+    flags.enableButtons = prefs.getBool("feat_btn", true);
+    flags.enableDraw = prefs.getBool("feat_draw", true);
+    flags.enableAudio = prefs.getBool("feat_audio", true);
+    flags.enableStereo = prefs.getBool("feat_stereo", true);
+    flags.enableLED = prefs.getBool("feat_led", true);
+    flags.enableAlarms = prefs.getBool("feat_alarms", true);
+    flags.enableWeb = prefs.getBool("feat_web", true);
+    flags.enableFMRadio = prefs.getBool("feat_fm", false);
+    flags.enablePRAM = prefs.getBool("feat_pram", true);
+    flags.enableI2CScan = prefs.getBool("feat_i2c", true);
+    
+    Serial.println("Feature flags loaded from NVS");
+    return true;
+}
+
+// ===== VOLUME AND BRIGHTNESS =====
+bool StorageModule::saveVolume(uint8_t volume) {
+    if (!isInitialized) return false;
+    prefs.putUChar("volume", volume);
+    Serial.printf("Volume saved: %d\n", volume);
+    return true;
+}
+
+uint8_t StorageModule::loadVolume(uint8_t defaultValue) {
+    if (!isInitialized) return defaultValue;
+    uint8_t vol = prefs.getUChar("volume", defaultValue);
+    Serial.printf("Volume loaded: %d\n", vol);
+    return vol;
+}
+
+bool StorageModule::saveBrightness(uint8_t brightness) {
+    if (!isInitialized) return false;
+    prefs.putUChar("brightness", brightness);
+    Serial.printf("Brightness saved: %d\n", brightness);
+    return true;
+}
+
+uint8_t StorageModule::loadBrightness(uint8_t defaultValue) {
+    if (!isInitialized) return defaultValue;
+    uint8_t bright = prefs.getUChar("brightness", defaultValue);
+    Serial.printf("Brightness loaded: %d\n", bright);
+    return bright;
+}
+

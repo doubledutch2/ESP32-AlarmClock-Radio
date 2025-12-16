@@ -1,13 +1,17 @@
 #include "WebServerModule.h"
+#include "StorageModule.h"  // CRITICAL: Must include this to see FeatureFlags
 #include "AudioModule.h"
 #include "FMRadioModule.h"
 #include "AlarmController.h"
 #include "WebServerAlarms.h"
+#include "DisplayILI9341.h"
+#include "FeatureFlags.h"
 
 WebServerModule::WebServerModule() 
     : server(nullptr), playCallback(nullptr), storage(nullptr), 
       timeModule(nullptr), audioModule(nullptr), fmRadioModule(nullptr),
-      stationList(nullptr), stationCount(0), alarmServer(nullptr), alarmController(nullptr) {
+      displayModule(nullptr), stationList(nullptr), stationCount(0), 
+      alarmServer(nullptr), alarmController(nullptr) {
     server = new WebServer(80);
 }
 
@@ -36,8 +40,12 @@ void WebServerModule::begin(const char* mdnsName) {
     server->on("/delete_station", HTTP_POST, [this]() { handleDeleteStation(); });
     server->on("/settings", [this]() { handleSettings(); });
     server->on("/save_timezone", HTTP_POST, [this]() { handleSaveTimezone(); });
+    server->on("/save_features", HTTP_POST, [this]() { handleSaveFeatures(); });
+    server->on("/control", [this]() { handleControl(); });
+    server->on("/set_volume", HTTP_POST, [this]() { handleSetVolume(); });
+    server->on("/set_brightness", HTTP_POST, [this]() { handleSetBrightness(); });
     server->on("/play", HTTP_POST, [this]() { handlePlay(); });
-    server->on("/stop", HTTP_POST, [this]() { handleStop(); });  // NEW: Stop/Pause route
+    server->on("/stop", HTTP_POST, [this]() { handleStop(); });
     server->onNotFound([this]() { handleNotFound(); });
 
     Serial.println("Main routes registered");
@@ -60,15 +68,15 @@ void WebServerModule::begin(const char* mdnsName) {
         Serial.println("WARNING: WebServerAlarms not created - missing modules:");
         if (!storage) Serial.println("  - Storage module missing");
         if (!audioModule) Serial.println("  - Audio module missing");
-        if (!fmRadioModule) Serial.println("  - FM Radio module missing");
     }
     
     server->begin();
     Serial.println("Web server started on port 80");
     Serial.println("Available routes:");
     Serial.println("  /               - Main page");
+    Serial.println("  /control        - Volume/Brightness control");
     Serial.println("  /stations       - Station management");
-    Serial.println("  /settings       - Settings");
+    Serial.println("  /settings       - Settings & Features");
     if (alarmServer) {
         Serial.println("  /alarms         - Alarm management");
     }
@@ -100,6 +108,10 @@ void WebServerModule::setFMRadioModule(FMRadioModule* fm) {
     fmRadioModule = fm;
 }
 
+void WebServerModule::setDisplayModule(DisplayILI9341* disp) {
+    displayModule = disp;
+}
+
 void WebServerModule::setStationList(InternetRadioStation* stations, int count) {
     stationList = stations;
     stationCount = count;
@@ -112,6 +124,64 @@ void WebServerModule::setAlarmController(AlarmController* ctrl) {
     // If alarmServer already exists, pass it the reference
     if (alarmServer && alarmController) {
         alarmServer->setAlarmController(alarmController);
+    }
+}
+
+void WebServerModule::handleControl() {
+    server->send(200, "text/html", getControlHTML());
+}
+
+void WebServerModule::handleSetVolume() {
+    if (!server->hasArg("volume") || !audioModule || !storage) {
+        server->send(400, "text/plain", "Missing parameters");
+        return;
+    }
+    
+    int volume = server->arg("volume").toInt();
+    audioModule->setVolume(volume);
+    storage->saveVolume(volume);
+    
+    Serial.printf("Volume set to %d via web\n", volume);
+    server->send(200, "text/plain", "Volume updated");
+}
+
+void WebServerModule::handleSetBrightness() {
+    if (!server->hasArg("brightness") || !displayModule || !storage) {
+        server->send(400, "text/plain", "Missing parameters");
+        return;
+    }
+    
+    int brightness = server->arg("brightness").toInt();
+    displayModule->setBrightness(brightness);
+    storage->saveBrightness(brightness);
+    
+    Serial.printf("Brightness set to %d via web\n", brightness);
+    server->send(200, "text/plain", "Brightness updated");
+}
+
+void WebServerModule::handleSaveFeatures() {
+    if (!storage) {
+        server->send(400, "text/plain", "Storage not available");
+        return;
+    }
+    
+    FeatureFlags flags;
+    flags.enableTouchScreen = server->hasArg("touchscreen");
+    flags.enableButtons = server->hasArg("buttons");
+    flags.enableDraw = server->hasArg("draw");
+    flags.enableAudio = server->hasArg("audio");
+    flags.enableStereo = server->hasArg("stereo");
+    flags.enableLED = server->hasArg("led");
+    flags.enableAlarms = server->hasArg("alarms");
+    flags.enableWeb = server->hasArg("web");
+    flags.enableFMRadio = server->hasArg("fmradio");
+    flags.enablePRAM = server->hasArg("pram");
+    flags.enableI2CScan = server->hasArg("i2cscan");
+    
+    if (storage->saveFeatureFlags(flags)) {
+        server->send(200, "text/plain", "Feature flags saved. Restart device for changes to take effect.");
+    } else {
+        server->send(500, "text/plain", "Failed to save feature flags");
     }
 }
 
@@ -189,8 +259,6 @@ void WebServerModule::handleSaveTimezone() {
     int dstOffset = server->arg("dstOffset").toInt() * 3600;  // Convert hours to seconds
     
     if (storage->saveTimezone(gmtOffset, dstOffset)) {
-        // Update the time module with new settings
-        // Note: This requires a restart to take effect properly
         server->send(200, "text/plain", "Timezone saved. Restart device for changes to take effect.");
     } else {
         server->send(500, "text/plain", "Failed to save timezone");
@@ -216,7 +284,6 @@ void WebServerModule::handlePlay() {
     }
 }
 
-// NEW: Handle stop/pause request
 void WebServerModule::handleStop() {
     Serial.println("Web request to stop audio");
     
@@ -286,9 +353,11 @@ String WebServerModule::getHTMLHeader() {
             display: flex;
             background: #f8f9fa;
             border-bottom: 2px solid #e9ecef;
+            overflow-x: auto;
         }
         .nav a {
             flex: 1;
+            min-width: 100px;
             padding: 15px;
             text-align: center;
             text-decoration: none;
@@ -423,6 +492,69 @@ String WebServerModule::getHTMLHeader() {
             color: #667eea;
             margin-bottom: 10px;
         }
+        .slider-container {
+            margin: 30px 0;
+        }
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #e9ecef;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        .slider-value {
+            display: inline-block;
+            min-width: 50px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-left: 15px;
+        }
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        .checkbox-item:hover {
+            background: #e9ecef;
+        }
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .checkbox-item label {
+            cursor: pointer;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -453,13 +585,127 @@ String WebServerModule::getHTMLFooter() {
 )html";
 }
 
+String WebServerModule::getControlHTML() {
+    String html = getHTMLHeader();
+    
+    // Get current values
+    int currentVolume = audioModule ? audioModule->getCurrentVolume() : 3;
+    int maxVolume = audioModule ? audioModule->getMaxVolume() : 21;
+    int currentBrightness = displayModule ? displayModule->getBrightness() : 200;
+    
+    html += R"html(
+        <div class="nav">
+            <a href="/">Play</a>
+            <a href="/control" class="active">Control</a>
+            <a href="/stations">Stations</a>
+            <a href="/alarms">Alarms</a>
+            <a href="/settings">Settings</a>
+        </div>
+        <div class="content">
+            <div id="alert" class="alert"></div>
+            
+            <div class="info-box">
+                <h3>Volume & Brightness Control</h3>
+                <p>Adjust volume and screen brightness. Settings are saved automatically.</p>
+            </div>
+            
+            <div class="slider-container">
+                <h2 style="color: #495057; margin-bottom: 15px;">🔊 Volume</h2>
+                <div style="display: flex; align-items: center;">
+                    <input type="range" class="slider" id="volumeSlider" 
+                           min="0" max=")html" + String(maxVolume) + R"html(" 
+                           value=")html" + String(currentVolume) + R"html(" 
+                           oninput="updateVolumeDisplay(this.value)">
+                    <span class="slider-value" id="volumeValue">)html" + String(currentVolume) + R"html(</span>
+                </div>
+                <button class="btn-primary" onclick="saveVolume()" style="margin-top: 15px;">💾 Save Volume</button>
+            </div>
+            
+            <div class="slider-container">
+                <h2 style="color: #495057; margin-bottom: 15px;">💡 Brightness</h2>
+                <div style="display: flex; align-items: center;">
+                    <input type="range" class="slider" id="brightnessSlider" 
+                           min="0" max="255" 
+                           value=")html" + String(currentBrightness) + R"html(" 
+                           oninput="updateBrightnessDisplay(this.value)">
+                    <span class="slider-value" id="brightnessValue">)html" + String(currentBrightness) + R"html(</span>
+                </div>
+                <button class="btn-primary" onclick="saveBrightness()" style="margin-top: 15px;">💾 Save Brightness</button>
+            </div>
+            
+            <div class="info-box" style="margin-top: 40px;">
+                <h3>Current Status</h3>
+)html";
+
+    if (audioModule) {
+        html += "<p><strong>Now Playing:</strong> " + audioModule->getCurrentStationName() + "</p>";
+        html += "<p><strong>Audio Status:</strong> " + String(audioModule->getIsPlaying() ? "Playing" : "Stopped") + "</p>";
+    }
+    
+    if (timeModule) {
+        html += "<p><strong>Time:</strong> " + timeModule->getTimeString() + "</p>";
+    }
+    
+    html += R"html(
+            </div>
+        </div>
+        <script>
+            function updateVolumeDisplay(value) {
+                document.getElementById('volumeValue').textContent = value;
+            }
+            
+            function updateBrightnessDisplay(value) {
+                document.getElementById('brightnessValue').textContent = value;
+            }
+            
+            function saveVolume() {
+                const volume = document.getElementById('volumeSlider').value;
+                
+                fetch('/set_volume', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'volume=' + volume
+                })
+                .then(response => response.text())
+                .then(data => {
+                    showAlert('Volume saved: ' + volume);
+                })
+                .catch(error => {
+                    showAlert('Error: ' + error, true);
+                });
+            }
+            
+            function saveBrightness() {
+                const brightness = document.getElementById('brightnessSlider').value;
+                
+                fetch('/set_brightness', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'brightness=' + brightness
+                })
+                .then(response => response.text())
+                .then(data => {
+                    showAlert('Brightness saved: ' + brightness);
+                })
+                .catch(error => {
+                    showAlert('Error: ' + error, true);
+                });
+            }
+        </script>
+)html";
+    
+    html += getHTMLFooter();
+    return html;
+}
+
 String WebServerModule::getMainHTML() {
     String html = getHTMLHeader();
     
     html += R"html(
         <div class="nav">
             <a href="/" class="active">Play</a>
-            <a href="/stations">Manage Stations</a>
+            <a href="/control">Control</a>
+            <a href="/stations">Stations</a>
             <a href="/alarms">Alarms</a>
             <a href="/settings">Settings</a>
         </div>
@@ -564,7 +810,8 @@ String WebServerModule::getStationsHTML() {
     html += R"html(
         <div class="nav">
             <a href="/">Play</a>
-            <a href="/stations" class="active">Manage Stations</a>
+            <a href="/control">Control</a>
+            <a href="/stations" class="active">Stations</a>
             <a href="/alarms">Alarms</a>
             <a href="/settings">Settings</a>
         </div>
@@ -708,27 +955,104 @@ String WebServerModule::getSettingsHTML() {
     int gmtHours = gmtOffset / 3600;
     int dstHours = dstOffset / 3600;
     
+    // Get current feature flags
+    FeatureFlags flags;
+    if (storage) {
+        storage->loadFeatureFlags(flags);
+    }
+    
     html += R"html(
         <div class="nav">
             <a href="/">Play</a>
-            <a href="/stations">Manage Stations</a>
+            <a href="/control">Control</a>
+            <a href="/stations">Stations</a>
             <a href="/alarms">Alarms</a>
             <a href="/settings" class="active">Settings</a>
         </div>
         <div class="content">
             <div id="alert" class="alert"></div>
             
+            <!-- Feature Flags Section -->
             <div class="info-box">
-                <h3>Timezone Configuration</h3>
-                <p>Set your timezone offset from GMT and daylight saving time adjustment. Changes require a device restart to take effect.</p>
+                <h3>Feature Configuration</h3>
+                <p>Enable or disable hardware features. <strong>Restart required</strong> after changes.</p>
             </div>
             
-            <h2 style="margin-bottom: 20px; color: #495057;">Timezone Settings</h2>
+            <h2 style="margin-bottom: 20px; color: #495057;">Hardware Features</h2>
+            
+            <form id="featuresForm">
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="touchscreen" name="touchscreen" )html" + 
+                        String(flags.enableTouchScreen ? "checked" : "") + R"html(>
+                        <label for="touchscreen">TouchScreen</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="buttons" name="buttons" )html" + 
+                        String(flags.enableButtons ? "checked" : "") + R"html(>
+                        <label for="buttons">Buttons</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="draw" name="draw" )html" + 
+                        String(flags.enableDraw ? "checked" : "") + R"html(>
+                        <label for="draw">Draw</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="audio" name="audio" )html" + 
+                        String(flags.enableAudio ? "checked" : "") + R"html(>
+                        <label for="audio">Audio</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="stereo" name="stereo" )html" + 
+                        String(flags.enableStereo ? "checked" : "") + R"html(>
+                        <label for="stereo">Stereo</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="led" name="led" )html" + 
+                        String(flags.enableLED ? "checked" : "") + R"html(>
+                        <label for="led">LED</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="alarms" name="alarms" )html" + 
+                        String(flags.enableAlarms ? "checked" : "") + R"html(>
+                        <label for="alarms">Alarms</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="web" name="web" )html" + 
+                        String(flags.enableWeb ? "checked" : "") + R"html(>
+                        <label for="web">Web Server</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="fmradio" name="fmradio" )html" + 
+                        String(flags.enableFMRadio ? "checked" : "") + R"html(>
+                        <label for="fmradio">FM Radio</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="pram" name="pram" )html" + 
+                        String(flags.enablePRAM ? "checked" : "") + R"html(>
+                        <label for="pram">PSRAM</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="i2cscan" name="i2cscan" )html" + 
+                        String(flags.enableI2CScan ? "checked" : "") + R"html(>
+                        <label for="i2cscan">I2C Scan</label>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn-primary" onclick="saveFeatures()">💾 Save Features</button>
+            </form>
+            
+            <!-- Timezone Section -->
+            <h2 style="margin-top: 40px; margin-bottom: 20px; color: #495057;">Timezone Settings</h2>
+            
+            <div class="info-box">
+                <h3>Timezone Configuration</h3>
+                <p>Set your timezone offset from GMT and daylight saving time adjustment. <strong>Restart required</strong> after changes.</p>
+            </div>
             
             <div class="form-group">
                 <label>GMT Offset (hours)</label>
-                <select id="gmtOffset">
-)html";
+                <select id="gmtOffset">)html";
 
     // Generate GMT offset options from -12 to +14
     for (int i = -12; i <= 14; i++) {
@@ -758,10 +1082,10 @@ String WebServerModule::getSettingsHTML() {
             
             <button class="btn-primary" onclick="saveTimezone()">💾 Save Timezone</button>
             
+            <!-- System Information -->
             <h2 style="margin-top: 40px; margin-bottom: 20px; color: #495057;">System Information</h2>
             
-            <div class="info-box">
-)html";
+            <div class="info-box">)html";
 
     if (timeModule) {
         html += "<p><strong>Current Time:</strong> " + timeModule->getTimeString() + "</p>";
@@ -775,15 +1099,28 @@ String WebServerModule::getSettingsHTML() {
     
     html += R"html(
             </div>
-            
-            <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #e9ecef;">
-                <h3 style="color: #dc3545; margin-bottom: 15px;">Danger Zone</h3>
-                <p style="margin-bottom: 15px; color: #6c757d;">Reset all settings and stations to factory defaults.</p>
-                <button class="btn-danger" onclick="factoryReset()">⚠️ Factory Reset</button>
-            </div>
         </div>
         
         <script>
+            function saveFeatures() {
+                const form = document.getElementById('featuresForm');
+                const formData = new FormData(form);
+                const params = new URLSearchParams(formData).toString();
+                
+                fetch('/save_features', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: params
+                })
+                .then(response => response.text())
+                .then(data => {
+                    showAlert(data);
+                })
+                .catch(error => {
+                    showAlert('Error: ' + error, true);
+                });
+            }
+            
             function saveTimezone() {
                 const gmtOffset = document.getElementById('gmtOffset').value;
                 const dstOffset = document.getElementById('dstOffset').value;
@@ -800,18 +1137,6 @@ String WebServerModule::getSettingsHTML() {
                 .catch(error => {
                     showAlert('Error: ' + error, true);
                 });
-            }
-            
-            function factoryReset() {
-                if (!confirm('Are you sure you want to reset ALL settings and stations? This cannot be undone!')) {
-                    return;
-                }
-                
-                if (!confirm('Really delete everything? Last chance!')) {
-                    return;
-                }
-                
-                showAlert('Factory reset not yet implemented in this demo', true);
             }
         </script>
 )html";
