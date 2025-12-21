@@ -103,6 +103,8 @@ void HardwareSetup::loadSavedSettings() {
     
     Serial.println("Loading saved settings from NVS...");
     
+    storage->loadFeatureFlags(activeFlags); 
+    
     // Load volume
     uint8_t savedVolume = storage->loadVolume(3);
     if (audio) {
@@ -228,7 +230,7 @@ void HardwareSetup::initTime() {
 }
 
 void HardwareSetup::initWebServer() {
-    if (ENABLE_WEB && wifi && wifi->isConnected()) {
+    if (activeFlags.EnableWeb && wifi && wifi->isConnected()) {
         webServer = new WebServerModule();
         
         // CRITICAL: Set ALL modules BEFORE calling begin()
@@ -267,7 +269,7 @@ void HardwareSetup::initWebServer() {
 }
 
 void HardwareSetup::initAudio() {
-    if (ENABLE_AUDIO) {
+    if (activeFlags.enableAudio) {
         Serial.println("Initializing Audio...");
         
         // Load saved volume or use default
@@ -295,7 +297,7 @@ void HardwareSetup::initAudio() {
 }
 
 void HardwareSetup::doI2CScan() {
-    if (ENABLE_I2C_SCAN) {
+    if (activeFlags.enableI2CScan) {
         int  sizeBuf = 100;
         char displayBuf[100] = "";
         char hexChar[10];
@@ -353,7 +355,7 @@ void HardwareSetup::doI2CScan() {
 }
 
 void HardwareSetup::initFMRadio() {
-    if (ENABLE_FM_RADIO) {
+    if (activeFlags.enableFMRadio) {
         Serial.println("Initializing FM Radio...");
         Wire.begin(I2C_SDA, I2C_SCL);
         delay(100);
@@ -373,7 +375,7 @@ void HardwareSetup::initFMRadio() {
 }
 
 void HardwareSetup::initLED() {
-    if (ENABLE_LED) {
+    if (activeFlags.enableLED) {
         if (display) display->drawText(10, lastRow, "Init LED: OK", ILI9341_WHITE, 1);
         led = new LEDModule(LED_PIN);
         led->begin();
@@ -405,7 +407,7 @@ void HardwareSetup::handleVolumeControl() {
 }
 
 void HardwareSetup::handleBrightnessButton() {
-    if (!ENABLE_BUTTONS) {
+    if (!activeFlags.enableButtons) {
         return;
     }
     static bool brightnessPressed = false;
@@ -442,7 +444,7 @@ void HardwareSetup::handleNextStationButton() {
 }
 
 void HardwareSetup::initTouchScreen() {
-    #if ENABLE_TOUCHSCREEN
+    if (activeFlags.enableTouchScreen) {
         Serial.println("TouchScreen: Creating module using TFT_eSPI...");
         
         if (!display) {
@@ -469,10 +471,11 @@ void HardwareSetup::initTouchScreen() {
             if (display) display->drawText(10, lastRow, "Init Touch: can not create touch", ILI9341_WHITE, 1);
             Serial.println("ERROR: Failed to create TouchScreenModule");
         }
-    #else
+    }
+    else {
         Serial.println("TouchScreen disabled in config (ENABLE_TOUCHSCREEN = false)");
         if (display) display->drawText(10, lastRow, "Init Touch: disabled", ILI9341_WHITE, 1);
         touchScreen = nullptr;
-    #endif
+    }
     lastRow += fontHeight;
 }

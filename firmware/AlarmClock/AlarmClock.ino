@@ -8,6 +8,7 @@
 #include "HardwareSetup.h"
 #include "MenuSystem.h"
 #include "AlarmController.h"
+#include "FeatureFlags.h"
 
 // Module instances (managed by HardwareSetup)
 HardwareSetup* hardware = nullptr;
@@ -32,7 +33,7 @@ void loadStationsFromStorage() {
   int savedCount = 0;
   StorageModule* storage = hardware->getStorage();
 
-  if (ENABLE_PRAM) {
+  if (hardware->activeFlags.enablePRAM) {
     savedCount = storage->getInternetStationCount();
     
     Serial.printf("Loading %d stations from storage\n", savedCount);
@@ -97,7 +98,7 @@ void setup() {
   Serial.println("   ESP32 Alarm Clock Radio");
   Serial.println("====================================\n");
   
-  if (ENABLE_PRAM) {
+  if (hardware->activeFlags.enablePRAM) {
     Serial.println("Going to initialize PSRAM");
     if (psramInit()) {
       Serial.print("PSRAM initialized. Total PSRAM size: ");
@@ -136,7 +137,7 @@ void setup() {
   );
   
   // Initialize alarm controller with all required parameters
-  if (ENABLE_ALARMS) {
+  if (hardware->activeFlags.enableAlarms) {
     Serial.println("Creating AlarmController...");
     alarmController = new AlarmController(
       hardware->getAudio(),
@@ -164,7 +165,7 @@ void setup() {
   uiState.lastButtonPress = 0;
   
   // Load configuration
-  if (ENABLE_PRAM) {
+  if (hardware->activeFlags.enablePRAM) {
     if (hardware->getStorage() && hardware->getStorage()->isReady()) {
       uint8_t h, m;
       bool en;
@@ -185,7 +186,7 @@ void setup() {
     }
   }
   // Connect states to menu system
-  if (ENABLE_ALARMS) {
+  if (hardware->activeFlags.enableAlarms) {
     menu->setAlarmState(&alarmState);
   }
   menu->setUIState(&uiState);
@@ -241,7 +242,7 @@ void loop() {
   }
   
   // Read buttons (all active LOW with INPUT_PULLUP)
-  if (ENABLE_BUTTONS) {
+  if (hardware->activeFlags.enableButtons) {
     bool btnUp = !digitalRead(BTN_UP);
     bool btnDown = !digitalRead(BTN_DOWN);
     bool btnSelect = !digitalRead(BTN_SELECT);
@@ -266,7 +267,7 @@ void loop() {
   }
   
   // Check alarms
-  if (ENABLE_ALARMS) {
+  if (hardware->activeFlags.enableAlarms) {
     alarmController->checkAlarms(hardware->getTimeModule());
   }
   delay(1);

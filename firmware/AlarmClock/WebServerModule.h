@@ -31,6 +31,7 @@ private:
     WebServerAlarms* alarmServer;
     AlarmController* alarmController;
     
+    // Route handlers
     void handleRoot();
     void handleControl();
     void handleStations();
@@ -45,8 +46,7 @@ private:
     void handleStop();
     void handleNotFound();
     
-    String getHTMLHeader();
-    String getHTMLFooter();
+    // HTML generation (delegated to WebServerHTML)
     String getMainHTML();
     String getControlHTML();
     String getStationsHTML();

@@ -11,6 +11,7 @@
 #include "WebServerModule.h"
 #include "LEDModule.h"
 #include "TouchScreenModule.h"
+#include "FeatureFlags.h"
 #include <SPI.h>
 
 class HardwareSetup {
@@ -29,6 +30,8 @@ private:
     uint8_t brightnessLevel;
     int fontHeight = 20;
     int lastRow     = 60;
+    
+    FeatureFlags activeFlags;  // NEW: Store loaded feature flags
 
 public:
     HardwareSetup();
@@ -47,6 +50,7 @@ public:
     WebServerModule* getWebServer() { return webServer; }
     LEDModule* getLED() { return led; }
     TouchScreenModule* getTouchScreen() { return touchScreen; }
+    FeatureFlags getActiveFlags() { return activeFlags; }  // NEW: Get feature flags
     
 private:
     void loadSavedSettings();  // NEW: Load settings from NVS
