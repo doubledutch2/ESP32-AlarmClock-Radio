@@ -25,13 +25,13 @@ private:
     WebServerModule* webServer;
     LEDModule* led;
     TouchScreenModule* touchScreen;
+    FeatureFlags activeFlags;
     
     int lastVolumePotValue;
     uint8_t brightnessLevel;
     int fontHeight = 20;
     int lastRow     = 60;
     
-    FeatureFlags activeFlags;  // NEW: Store loaded feature flags
 
 public:
     HardwareSetup();

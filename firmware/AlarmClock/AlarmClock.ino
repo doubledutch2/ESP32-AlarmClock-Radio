@@ -33,7 +33,7 @@ void loadStationsFromStorage() {
   int savedCount = 0;
   StorageModule* storage = hardware->getStorage();
 
-  if (hardware->activeFlags.enablePRAM) {
+  if (hardware->getActiveFlags().enablePRAM) {
     savedCount = storage->getInternetStationCount();
     
     Serial.printf("Loading %d stations from storage\n", savedCount);
@@ -98,7 +98,16 @@ void setup() {
   Serial.println("   ESP32 Alarm Clock Radio");
   Serial.println("====================================\n");
   
-  if (hardware->activeFlags.enablePRAM) {
+  // Initialize all hardware
+  Serial.println("Before hardware setup");
+  hardware = new HardwareSetup();
+  if (!hardware->begin()) {
+    Serial.println("Hardware initialization failed!");
+    while(1) delay(1000);
+  }
+
+  // if (ENABLE_PRAM) {
+  if (hardware->getActiveFlags().enablePRAM) {
     Serial.println("Going to initialize PSRAM");
     if (psramInit()) {
       Serial.print("PSRAM initialized. Total PSRAM size: ");
@@ -114,14 +123,10 @@ void setup() {
     Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
     Serial.println();
   }
-
-  // Initialize all hardware
-  Serial.println("Before hardware setup");
-  hardware = new HardwareSetup();
-  if (!hardware->begin()) {
-    Serial.println("Hardware initialization failed!");
-    while(1) delay(1000);
+  else {
+    Serial.println("Not using PSRAM");
   }
+
 
   // Load stations from storage (must be done AFTER hardware init)
   loadStationsFromStorage();
@@ -137,7 +142,7 @@ void setup() {
   );
   
   // Initialize alarm controller with all required parameters
-  if (hardware->activeFlags.enableAlarms) {
+  if (hardware->getActiveFlags().enableAlarms) {
     Serial.println("Creating AlarmController...");
     alarmController = new AlarmController(
       hardware->getAudio(),
@@ -165,7 +170,7 @@ void setup() {
   uiState.lastButtonPress = 0;
   
   // Load configuration
-  if (hardware->activeFlags.enablePRAM) {
+  if (hardware->getActiveFlags().enablePRAM) {
     if (hardware->getStorage() && hardware->getStorage()->isReady()) {
       uint8_t h, m;
       bool en;
@@ -186,7 +191,7 @@ void setup() {
     }
   }
   // Connect states to menu system
-  if (hardware->activeFlags.enableAlarms) {
+  if (hardware->getActiveFlags().enableAlarms) {
     menu->setAlarmState(&alarmState);
   }
   menu->setUIState(&uiState);
@@ -242,7 +247,7 @@ void loop() {
   }
   
   // Read buttons (all active LOW with INPUT_PULLUP)
-  if (hardware->activeFlags.enableButtons) {
+  if (hardware->getActiveFlags().enableButtons) {
     bool btnUp = !digitalRead(BTN_UP);
     bool btnDown = !digitalRead(BTN_DOWN);
     bool btnSelect = !digitalRead(BTN_SELECT);
@@ -267,7 +272,7 @@ void loop() {
   }
   
   // Check alarms
-  if (hardware->activeFlags.enableAlarms) {
+  if (hardware->getActiveFlags().enableAlarms) {
     alarmController->checkAlarms(hardware->getTimeModule());
   }
   delay(1);

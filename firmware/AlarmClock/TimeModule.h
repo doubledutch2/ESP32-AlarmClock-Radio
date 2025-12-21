@@ -3,6 +3,7 @@
 
 #include <WiFi.h>
 #include <time.h>
+#include <ezTime.h>
 
 class TimeModule {
 private:
@@ -14,6 +15,7 @@ private:
     int daylightOffset_sec;
     
     void updateLocalTime();
+    Timezone myTZ;
 
 public:
     TimeModule(const char* ntp = "pool.ntp.org", long gmtOffset = 0, int dstOffset = 0);

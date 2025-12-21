@@ -5,10 +5,9 @@
 
 - All settings which can be changed on the TFT screen.  The Webportal should also availabe as a WiFi access point to configure the WiFi Access credentials
 
-UI Changes
+- Can you update the time logic to use the ezTime library so we automatically get the correct time zone and are aware of Daylight Savings time. If we are in a country with Day Light Savings time - we need to ensure that the time changes at the correct moment so I guess we have to keep checking this every minute?
 
-- TFT
 
-"1 - 07:30 - Daily"
-"3 - 21:00 - Once"
+
+
 

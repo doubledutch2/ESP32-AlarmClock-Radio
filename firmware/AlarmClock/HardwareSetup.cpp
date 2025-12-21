@@ -230,7 +230,7 @@ void HardwareSetup::initTime() {
 }
 
 void HardwareSetup::initWebServer() {
-    if (activeFlags.EnableWeb && wifi && wifi->isConnected()) {
+    if (activeFlags.enableWeb && wifi && wifi->isConnected()) {
         webServer = new WebServerModule();
         
         // CRITICAL: Set ALL modules BEFORE calling begin()

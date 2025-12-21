@@ -8,27 +8,17 @@ TimeModule::TimeModule(const char* ntp, long gmtOffset, int dstOffset)
 
 bool TimeModule::begin(const char* ssid, const char* password) {
     int attempts = 0;
-/*
-    Serial.println("Connecting to WiFi...");
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
+
+    waitForSync(); // Syncs with NTP
     
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        Serial.print(".");
-        attempts++;
-    }
+    // Automatically detect timezone based on IP
+    myTZ.setLocation("GeoIP"); 
     
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("\nWiFi connection failed!");
-        return false;
-    }
-    
-    wifiConnected = true;
-    Serial.println("\nWiFi connected!");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-*/    
+    Serial.println("Detected Location: " + myTZ.getOlson());
+    // Serial.println("Country: " + myTZ.getCountry());
+    Serial.println("Time: " + myTZ.dateTime());
+    Serial.println("Is DST? " + String(myTZ.isDST() ? "Yes" : "No"));
+
     // Configure time with NTP
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     
