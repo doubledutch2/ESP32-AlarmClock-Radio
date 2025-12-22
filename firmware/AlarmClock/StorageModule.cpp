@@ -339,6 +339,15 @@ bool StorageModule::saveFeatureFlags(const FeatureFlags& flags) {
     prefs.putBool("feat_i2c", flags.enableI2CScan);
     
     Serial.println("Feature flags saved to NVS");
+    /*
+    Serial.print("Save EnableLED:");
+    if (flags.enableLED) {
+        Serial.println("true");
+    }
+    else {
+        Serial.println("false");
+    }
+    */
     return true;
 }
 
@@ -357,7 +366,15 @@ bool StorageModule::loadFeatureFlags(FeatureFlags& flags) {
     flags.enableFMRadio = prefs.getBool("feat_fm", false);
     flags.enablePRAM = prefs.getBool("feat_pram", true);
     flags.enableI2CScan = prefs.getBool("feat_i2c", true);
-    
+    /*
+    Serial.print("Load EnableLED:");
+    if (flags.enableLED) {
+        Serial.println("true");
+    }
+    else {
+        Serial.println("false");
+    }
+    */
     Serial.println("Feature flags loaded from NVS");
     return true;
 }

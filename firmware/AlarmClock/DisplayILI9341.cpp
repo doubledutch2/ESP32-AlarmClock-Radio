@@ -20,28 +20,24 @@ DisplayILI9341::DisplayILI9341(int8_t cs, int8_t dc, int8_t rst, int8_t mosi, in
     lastAlarmMin = 255;
     lastFMFreq = -1.0;
     lastWiFiStatus = false;
+    lastDateStr = "";
+    lastTimeStr = "";
     
     // Analog clock settings (right side of screen)
+    // Moved up and right to avoid digital clock
     clockCenterX = 240;
-    clockCenterY = 90;
-    clockRadius = 65;
+    clockCenterY = 70;
+    clockRadius = 55;
 }
 
 void DisplayILI9341::begin() {
     tft.init();
     tft.setRotation(1); // Landscape (320x240)
-  
-  
     tft.fillScreen(0x5AEB);
 
-    // Set "cursor" at top left corner of display (0,0) and select font 2
-    // (cursor will move to next line automatically during printing with 'tft.println'
-    //  or stay on the line is there is room for the text with tft.print)
     tft.setCursor(0, 0, 2);
-    // Set the font colour to be white with a black background, set text size multiplier to 1
     tft.setTextColor(TFT_WHITE,TFT_BLACK);  
     tft.setTextSize(1);
-    // We can now plot text on screen using the "print" class
     tft.println("Hello World!");
 
     if (backlightPin >= 0) {
@@ -70,6 +66,8 @@ void DisplayILI9341::resetCache() {
     lastAlarmMin = 255;
     lastFMFreq = -1.0;
     lastWiFiStatus = false;
+    lastDateStr = "";
+    lastTimeStr = "";
 }
 
 void DisplayILI9341::setBrightness(uint8_t level) {
@@ -85,7 +83,6 @@ uint8_t DisplayILI9341::getBrightness() {
 
 // ===== ANALOG CLOCK FUNCTIONS =====
 void DisplayILI9341::drawClockFace() {
-
     if (!ENABLE_DRAW) {
         return;
     }
@@ -112,7 +109,6 @@ void DisplayILI9341::drawClockFace() {
 }
 
 void DisplayILI9341::drawHourHand(uint8_t hour, uint8_t minute, bool erase) {
-
     if (!ENABLE_DRAW) {
         return;
     }
@@ -131,7 +127,6 @@ void DisplayILI9341::drawHourHand(uint8_t hour, uint8_t minute, bool erase) {
 }
 
 void DisplayILI9341::drawMinuteHand(uint8_t minute, bool erase) {
-
     if (!ENABLE_DRAW) {
         return;
     }
@@ -148,7 +143,6 @@ void DisplayILI9341::drawMinuteHand(uint8_t minute, bool erase) {
 }
 
 void DisplayILI9341::drawSecondHand(uint8_t second, bool erase) {
-
     if (!ENABLE_DRAW) {
         return;
     }
@@ -166,21 +160,23 @@ void DisplayILI9341::drawSecondHand(uint8_t second, bool erase) {
 
 // ===== SMART UPDATE FUNCTIONS =====
 void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
-
     if (!ENABLE_DRAW) {
         return;
     }
 
     // Update digital time (only if changed)
     if (hour != lastHour || minute != lastMinute) {
+        // FULLY clear the time area to prevent ghosting
+        /*
         tft.fillRect(10, 60, 160, 40, TFT_BLACK);
         
         char timeStr[6];
         sprintf(timeStr, "%02d:%02d", hour, minute);
-        tft.setTextColor(TFT_WHITE);
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
         tft.setTextSize(5);
         tft.setCursor(10, 60);
         tft.print(timeStr);
+        */
     }
     
     // Update analog clock
@@ -206,48 +202,81 @@ void DisplayILI9341::updateTime(uint8_t hour, uint8_t minute, uint8_t second) {
 }
 
 void DisplayILI9341::updateDate(uint16_t year, uint8_t month, uint8_t day) {
-
     if (!ENABLE_DRAW) {
         return;
     }
 
     if (year != lastYear || month != lastMonth || day != lastDay) {
-        tft.fillRect(10, 110, 140, 20, TFT_BLACK);
-        
+        // FULLY clear the date area to prevent ghosting
+/*
+        tft.fillRect(10, 110, 200, 20, TFT_BLACK);      
         char dateStr[15];
         sprintf(dateStr, "%04d-%02d-%02d", year, month, day);
-        tft.setCursor(10, 110);
-        tft.setTextColor(TFT_CYAN);
+        tft.setCursor(10, 70);
+        tft.setTextColor(TFT_CYAN, TFT_BLACK);
         tft.setTextSize(2);
         tft.print(dateStr);
-        
+*/        
         lastYear = year;
         lastMonth = month;
         lastDay = day;
     }
 }
 
-void DisplayILI9341::updateAlarmStatus(bool enabled, uint8_t hour, uint8_t minute) {
+void DisplayILI9341::updateDateFormatted(const String& dateStr, const String& timeStr) {
+    if (!ENABLE_DRAW) {
+        return;
+    }
+    // Check if date changed - MOVED to bottom, above SETUP button
+    if (dateStr != lastDateStr) {
+        // FULLY clear the date area (bottom of screen, Y: dateStrRow)
+        tft.fillRect(startColumn, dateStrRow, dateWidth,dateHeight, TFT_BLACK);
+        tft.setCursor(startColumn, dateStrRow);
+        tft.setTextColor(TFT_CYAN, TFT_BLACK);
+        tft.setTextSize(2);
+        tft.print(dateStr);
+        
+        lastDateStr = dateStr;
+    }
+    
+    // Check if time changed (HH:MM only, ignore seconds) - SMALLER and HIGHER
+    String shortTime = timeStr.substring(0, 5);  // Get "HH:MM"
+    String lastShortTime = lastTimeStr.substring(0, 5);
+    
+    if (shortTime != lastShortTime || lastTimeStr.length() == 0) {
+        // FULLY clear the time area (top left, smaller size 4)
+        tft.fillRect(startColumn, clockRow, clockWidth, clockHeight, TFT_BLACK);
+        tft.setCursor(startColumn, clockRow);
+        tft.setTextColor(TFT_WHITE, TFT_BLACK);
+        tft.setTextSize(4);  // Reduced from 5 to 4
+        tft.print(shortTime);
+        
+        lastTimeStr = timeStr;
+    }
+}
 
+void DisplayILI9341::updateAlarmStatus(bool enabled, uint8_t hour, uint8_t minute) {
     if (!ENABLE_DRAW) {
         return;
     }
 
     if (enabled != lastAlarmEnabled || hour != lastAlarmHour || minute != lastAlarmMin) {
-        tft.fillRect(10, 170, 200, 20, TFT_BLACK);
-        
-        char alarmStr[20];
+        // FULLY clear the alarm area (below digital clock)
+/*
+
+        This messes up the clock display
+*/        
+        tft.fillRect(startColumn, clockRow + clockHeight, alarmWidth, alarmHeight, TFT_BLACK);
+
+        // Only show alarm if enabled
         if (enabled) {
+            char alarmStr[20];
             sprintf(alarmStr, "ALARM: %02d:%02d", hour, minute);
-            tft.setTextColor(TFT_GREEN);
-        } else {
-            sprintf(alarmStr, "ALARM: OFF");
-            tft.setTextColor(TFT_RED);
+            tft.setTextColor(TFT_GREEN, TFT_BLACK);
+            tft.setCursor(10, 80);
+            tft.setTextSize(2);
+            tft.print(alarmStr);
         }
-        
-        tft.setCursor(10, 170);
-        tft.setTextSize(2);
-        tft.print(alarmStr);
         
         lastAlarmEnabled = enabled;
         lastAlarmHour = hour;
@@ -256,18 +285,18 @@ void DisplayILI9341::updateAlarmStatus(bool enabled, uint8_t hour, uint8_t minut
 }
 
 void DisplayILI9341::updateFMFrequency(float frequency) {
-
     if (!ENABLE_DRAW) {
         return;
     }
 
     if (abs(frequency - lastFMFreq) > 0.05) {
-        tft.fillRect(10, 195, 150, 20, TFT_BLACK);
+        // FULLY clear the FM area (below alarm)
+        tft.fillRect(10, 110, 150, 20, TFT_BLACK);
         
         char freqStr[15];
         sprintf(freqStr, "FM: %.1f MHz", frequency);
-        tft.setCursor(10, 195);
-        tft.setTextColor(TFT_YELLOW);
+        tft.setCursor(10, 110);
+        tft.setTextColor(TFT_YELLOW, TFT_BLACK);
         tft.setTextSize(2);
         tft.print(freqStr);
         
@@ -276,21 +305,21 @@ void DisplayILI9341::updateFMFrequency(float frequency) {
 }
 
 void DisplayILI9341::updateWiFiStatus(bool connected) {
-
     if (!ENABLE_DRAW) {
         return;
     }
 
     if (connected != lastWiFiStatus) {
-        tft.fillRect(5, 5, 60, 12, TFT_BLACK);
+        // FULLY clear the WiFi area
+        tft.fillRect(5, 5, 70, 15, TFT_BLACK);
         
         tft.setCursor(5, 5);
         tft.setTextSize(1);
         if (connected) {
-            tft.setTextColor(TFT_GREEN);
+            tft.setTextColor(TFT_GREEN, TFT_BLACK);
             tft.print("WiFi OK");
         } else {
-            tft.setTextColor(TFT_RED);
+            tft.setTextColor(TFT_RED, TFT_BLACK);
             tft.print("WiFi OFF");
         }
         
@@ -299,12 +328,9 @@ void DisplayILI9341::updateWiFiStatus(bool connected) {
 }
 
 // ===== DIRECT DRAW FUNCTIONS =====
-//    display->drawText(10, 10, "Alarm Clock Starting...", ILI9341_WHITE, 2);
-
 void DisplayILI9341::drawText(int16_t x, int16_t y, const char* text, uint16_t color, uint8_t size) {
-    tft.setCursor(x, y,2);
-    // tft.setTextColor(ILI9341_WHITE,ILI9341_BLACK);
-    tft.setTextColor(color);
+    tft.setCursor(x, y, 2);
+    tft.setTextColor(color, TFT_BLACK);
     tft.setTextSize(size);
     tft.println(text);
 }
@@ -317,56 +343,50 @@ void DisplayILI9341::drawTextWithBackground(int16_t x, int16_t y, const char* te
 }
 
 void DisplayILI9341::drawBitmap(int16_t x, int16_t y, const uint16_t* bitmap, int16_t w, int16_t h) {
-
     if (!ENABLE_DRAW) {
         return;
     }
-
     tft.pushImage(x, y, w, h, bitmap);
 }
 
+/*
+x = startCol
+y = startRow
+w = width
+h = height
+*/
 void DisplayILI9341::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-
     if (!ENABLE_DRAW) {
         return;
     }
-
     tft.fillRect(x, y, w, h, color);
 }
 
 void DisplayILI9341::drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-
     if (!ENABLE_DRAW) {
         return;
     }
-
     tft.drawRect(x, y, w, h, color);
 }
 
 void DisplayILI9341::drawCircle(int16_t x, int16_t y, int16_t r, uint16_t color) {
-
     if (!ENABLE_DRAW) {
         return;
     }
-
     tft.drawCircle(x, y, r, color);
 }
 
 void DisplayILI9341::fillCircle(int16_t x, int16_t y, int16_t r, uint16_t color) {
-
     if (!ENABLE_DRAW) {
         return;
     }
-
     tft.fillCircle(x, y, r, color);
 }
 
 void DisplayILI9341::drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
-
     if (!ENABLE_DRAW) {
         return;
     }
-
     tft.drawLine(x0, y0, x1, y1, color);
 }
 

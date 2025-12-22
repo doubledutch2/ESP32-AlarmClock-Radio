@@ -30,18 +30,18 @@ bool HardwareSetup::begin() {
     Serial.println("HW - Init WiFi");
     initWiFi();
 
-    Serial.println("HW - Init Buttons");
-    initButtons();
-    
-    Serial.println("HW - Init LED");
-    initLED();
-    
     Serial.println("HW - Init Storage");
     initStorage();
     
     // Load saved settings after storage is initialized
     loadSavedSettings();
+/**/    
+    Serial.println("HW - Init Buttons");
+    initButtons();
     
+    Serial.println("HW - Init LED");
+    initLED();
+/**/    
     Serial.println("HW - Init Time");
     initTime();
     
@@ -85,7 +85,7 @@ bool HardwareSetup::begin() {
     }
     
     if (led) {
-        led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
+        // led->setColor(LEDModule::COLOR_BLUE, BRIGHT_DIM);
     }
 
     Serial.println("===========================================");
@@ -209,20 +209,20 @@ void HardwareSetup::initWiFi() {
 void HardwareSetup::initTime() {
     Serial.println("Initializing Time...");
     
-    // Load timezone settings from storage if available
-    long gmtOffset = DEFAULT_GMT_OFFSET_SEC;
-    long dstOffset = DEFAULT_DAYLIGHT_OFFSET_SEC;
+    // With ezTime, we use timezone names instead of offsets
+    // You can either auto-detect or specify a timezone
     
-    if (storage && storage->isReady()) {
-        storage->loadTimezone(gmtOffset, dstOffset);
-        Serial.printf("Using stored timezone: GMT %ld, DST %d\n", gmtOffset, dstOffset);
-    } else {
-        Serial.println("Using default timezone settings");
-    }
+    // Option 1: Auto-detect timezone (recommended)
+    timeModule = new TimeModule();
     
-    timeModule = new TimeModule("pool.ntp.org", gmtOffset, dstOffset);
+    // Option 2: Specify timezone (uncomment if you want to hardcode it)
+    // timeModule = new TimeModule("Europe/London");  // UK
+    // timeModule = new TimeModule("America/New_York");  // US East Coast
+    
     if (timeModule->begin(WIFI_SSID, WIFI_PASSWORD)) {
         if (display) display->drawText(10, lastRow, "Time: OK", ILI9341_WHITE, 1);
+        Serial.println("Timezone: " + timeModule->getTimezoneName());
+        Serial.println("DST active: " + String(timeModule->isDST() ? "Yes" : "No"));
     } else {
         if (display) display->drawText(10, lastRow, "Time: FAIL", ILI9341_RED, 1);
     }

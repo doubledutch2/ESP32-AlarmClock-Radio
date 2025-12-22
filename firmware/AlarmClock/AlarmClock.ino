@@ -219,6 +219,14 @@ void setup() {
   if (hardware->getAudio()) {
     hardware->getAudio()->setStationList(stationList, stationCount);
   }
+
+  if (hardware->getDisplay()) {
+    Serial.println("Clearing display to remove old formatting...");
+    hardware->getDisplay()->clear();
+    delay(100);
+    hardware->getDisplay()->drawClockFace();
+    delay(100);
+  }
   
   Serial.println("Setup complete!\n");
   Serial.printf("Loaded %d internet radio stations\n", stationCount);
@@ -240,6 +248,11 @@ void loop() {
 
   // Update all hardware
   hardware->loop();
+  
+  // IMPORTANT: Update ezTime events (handles DST changes)
+  if (hardware->getTimeModule()) {
+    hardware->getTimeModule()->loop();
+  }
   
   // Handle touchscreen input (only if touchscreen is available)
   if (hardware->getTouchScreen()) {
@@ -265,15 +278,21 @@ void loop() {
 
   // Update display
   if (now - lastUpdate >= DISPLAY_UPDATE_INTERVAL || uiState.needsRedraw) {
+    // Let MenuSystem handle all the display updates
     menu->updateDisplay();
     menu->setWiFiStatus(hardware->getWiFi() && hardware->getWiFi()->isConnected());
+    
+    // DON'T call updateDate or updateTime directly here!
+    // The menu->updateDisplay() handles everything
+    
     lastUpdate = now;
     uiState.needsRedraw = false;
   }
   
   // Check alarms
-  if (hardware->getActiveFlags().enableAlarms) {
+  if (hardware->getActiveFlags().enableAlarms && alarmController) {
     alarmController->checkAlarms(hardware->getTimeModule());
   }
+  
   delay(1);
 }

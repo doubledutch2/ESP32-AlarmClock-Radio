@@ -42,7 +42,21 @@ private:
     uint8_t lastAlarmMin;
     float lastFMFreq;
     bool lastWiFiStatus;
+    String lastDateStr;  // NEW: Cache for formatted date
+    String lastTimeStr;  // NEW: Cache for formatted time
+
+    uint8_t startColumn = 10;
+    uint8_t dateStrRow  = 130;
+    uint8_t dateWidth   = 200;
+    uint8_t dateHeight  = 20;
+
+    uint8_t clockRow    = 35;
+    uint8_t clockWidth  = 100;
+    uint8_t clockHeight = 60;
     
+    uint8_t alarmWidth  = 140;
+    uint8_t alarmHeight = 30;
+
     // Analog clock center and radius
     int16_t clockCenterX;
     int16_t clockCenterY;
@@ -61,11 +75,12 @@ public:
     uint8_t getBrightness();
     
     // Get the underlying TFT_eSPI object (needed for touch)
-    TFT_eSPI* getTFT() { return &tft; }  // NEW: Expose TFT object
+    TFT_eSPI* getTFT() { return &tft; }
     
     // Smart update functions (only redraw if changed)
     void updateTime(uint8_t hour, uint8_t minute, uint8_t second);
     void updateDate(uint16_t year, uint8_t month, uint8_t day);
+    void updateDateFormatted(const String& dateStr, const String& timeStr);  // NEW: Better formatted display
     void updateAlarmStatus(bool enabled, uint8_t hour, uint8_t minute);
     void updateFMFrequency(float frequency);
     void updateWiFiStatus(bool connected);

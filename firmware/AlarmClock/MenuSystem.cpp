@@ -409,22 +409,38 @@ void MenuSystem::handleSetupMenu(bool up, bool down, bool select) {
 
 // ===== SCREEN DRAWING FUNCTIONS =====
 
+// Replace your drawMainScreen() method in MenuSystem.cpp with this:
+
 void MenuSystem::drawMainScreen() {
     if (!display || !timeModule) return;
     
-    display->updateTime(timeModule->getHour(), timeModule->getMinute(), timeModule->getSecond());
-    display->updateDate(timeModule->getYear(), timeModule->getMonth(), timeModule->getDay());
+    // DON'T use the old updateTime/updateDate methods!
+    // Only use the new updateDateFormatted method
     
+    // Get formatted strings from ezTime
+    String dateStr = timeModule->getDateString();  // "Sun, 21 Dec 2025"
+    String timeStr = timeModule->getTimeString();  // "17:06:00"
+    
+    // Update with new formatted method
+    display->updateDateFormatted(dateStr, timeStr);
+    
+    // Update analog clock
+    display->updateTime(timeModule->getHour(), timeModule->getMinute(), timeModule->getSecond());
+    
+    // Update alarm status (only if alarms enabled)
     if (alarmState) {
         display->updateAlarmStatus(alarmState->enabled, alarmState->hour, alarmState->minute);
     }
     
+    // Update FM frequency if FM radio is available
     if (fmRadio) {
         display->updateFMFrequency(fmRadio->getFrequency());
     }
     
+    // Update WiFi status
     display->updateWiFiStatus(wifiConnected);
     
+    // Display current station if playing
     if (audio && audio->getIsPlaying()) {
         static String lastStation = "";
         String currentStation = audio->getCurrentStationName();
@@ -435,25 +451,22 @@ void MenuSystem::drawMainScreen() {
         }
     }
     
+    // Display volume
     if (audio) {
         static int lastVol = -1;
         int vol = audio->getCurrentVolume();
         if (vol != lastVol) {
-            display->fillRect(220, 220, 90, 15, ILI9341_BLACK);
-            char volStr[20];
-            sprintf(volStr, "Vol:%d", vol);
-            display->drawText(220, 220, volStr, ILI9341_CYAN, 1);
+            // display->fillRect(220, 220, 90, 15, ILI9341_BLACK);
+            // char volStr[20];
+            // sprintf(volStr, "Vol:%d", vol);
+            // display->drawText(220, 220, volStr, ILI9341_CYAN, 1);
             lastVol = vol;
         }
     }
     
     // Draw SETUP button (bottom-right) - only draw once
-
     static bool setupButtonDrawn = false;
     
-    // Serial.printf("MenuSystem - setupButtonDrawn: %s\n", setupButtonDrawn ? "true" : "false");
-    // Serial.printf("MenuSystem - touchScreen: %s\n", touchScreen ? "set" : "null");
-
     if (!setupButtonDrawn && touchScreen) {
         int btnX = 220;
         int btnY = 180;
@@ -461,18 +474,18 @@ void MenuSystem::drawMainScreen() {
         int btnH = 50;
         
         // Button background
-        display->fillRect(btnX, btnY, btnW, btnH, ILI9341_BLUE);
-        display->drawRect(btnX, btnY, btnW, btnH, ILI9341_WHITE);
+        // display->fillRect(btnX, btnY, btnW, btnH, ILI9341_BLUE);
+        // display->drawRect(btnX, btnY, btnW, btnH, ILI9341_WHITE);
         
         // Button text
-        display->drawText(btnX + 15, btnY + 18, "SETUP", ILI9341_WHITE, 2);
+        // display->drawText(btnX + 15, btnY + 18, "SETUP", ILI9341_WHITE, 2);
         
         setupButtonDrawn = true;
     }
     
     static bool menuDrawn = false;
     if (!menuDrawn) {
-        display->drawText(10, 220, "UP/DN:Menu SEL:Choose", ILI9341_CYAN, 1);
+        // display->drawText(10, 220, "UP/DN:Menu SEL:Choose", ILI9341_CYAN, 1);
         menuDrawn = true;
     }
 }
@@ -483,10 +496,10 @@ void MenuSystem::drawSetTimeScreen() {
     display->drawText(80, 20, "SET TIME", ILI9341_YELLOW, 3);
     
     char timeStr[6];
-    sprintf(timeStr, "%02d:%02d", timeModule->getHour(), timeModule->getMinute());
+    // sprintf(timeStr, "%02d:%02d", timeModule->getHour(), timeModule->getMinute());
     
-    uint16_t color = (uiState && uiState->selectedItem == 0) ? ILI9341_GREEN : ILI9341_WHITE;
-    display->drawText(60, 100, timeStr, color, 4);
+    // uint16_t color = (uiState && uiState->selectedItem == 0) ? ILI9341_GREEN : ILI9341_WHITE;
+    // display->drawText(60, 100, timeStr, color, 4);
     
     display->drawText(10, 180, "UP/DN:Change SEL:Save", ILI9341_CYAN, 1);
     display->drawText(10, 200, "Note: Syncs with NTP", ILI9341_YELLOW, 1);
