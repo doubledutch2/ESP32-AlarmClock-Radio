@@ -408,3 +408,17 @@ uint8_t StorageModule::loadBrightness(uint8_t defaultValue) {
     return bright;
 }
 
+// ===== AUDIO MODE SETTINGS =====
+bool StorageModule::saveAudioMode(bool useFMRadio) {
+    if (!isInitialized) return false;
+    prefs.putBool("audioMode", useFMRadio);
+    Serial.printf("Audio mode saved: %s\n", useFMRadio ? "FM Radio" : "Internet Radio");
+    return true;
+}
+
+bool StorageModule::loadAudioMode(bool defaultValue) {
+    if (!isInitialized) return defaultValue;
+    bool mode = prefs.getBool("audioMode", defaultValue);
+    Serial.printf("Audio mode loaded: %s\n", mode ? "FM Radio" : "Internet Radio");
+    return mode;
+}

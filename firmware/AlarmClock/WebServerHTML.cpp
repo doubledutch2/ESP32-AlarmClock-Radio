@@ -407,6 +407,12 @@ String WebServerHTML::getSettingsHTML(StorageModule* storage, TimeModule* timeMo
         storage->loadFeatureFlags(flags);
     }
     
+    // Get current audio mode
+    bool useFMRadio = false;
+    if (storage) {
+        useFMRadio = storage->loadAudioMode(false);
+    }
+    
     html += R"html(
         <div class="nav">
             <a href="/">Play</a>
@@ -488,6 +494,28 @@ String WebServerHTML::getSettingsHTML(StorageModule* storage, TimeModule* timeMo
                 <button type="button" class="btn-primary" onclick="saveFeatures()">💾 Save Features</button>
             </form>
             
+            <!-- Audio Mode Section -->
+            <h2 style="margin-top: 40px; margin-bottom: 20px; color: #495057;">Audio Mode</h2>
+            
+            <div class="info-box">
+                <h3>Audio Source Selection</h3>
+                <p>Choose between FM Radio and Internet Radio streaming. This controls the MODE_SWITCH_PIN hardware switch. Changes are applied immediately.</p>
+            </div>
+            
+            <div class="form-group">
+                <label>Audio Source</label>
+                <select id="audioMode">
+                    <option value="0")html";
+    if (!useFMRadio) html += " selected";
+    html += R"html(">Internet Radio (Streaming)</option>
+                    <option value="1")html";
+    if (useFMRadio) html += " selected";
+    html += R"html(">FM Radio</option>
+                </select>
+            </div>
+            
+            <button class="btn-primary" onclick="saveAudioMode()">💾 Save Audio Mode</button>
+            
             <!-- Timezone Section -->
             <h2 style="margin-top: 40px; margin-bottom: 20px; color: #495057;">Timezone Settings</h2>
             
@@ -541,6 +569,7 @@ String WebServerHTML::getSettingsHTML(StorageModule* storage, TimeModule* timeMo
     
     if (storage) {
         html += "<p><strong>Saved Stations:</strong> " + String(storage->getInternetStationCount()) + " / 10</p>";
+        html += "<p><strong>Audio Mode:</strong> " + String(useFMRadio ? "FM Radio" : "Internet Radio") + "</p>";
     }
     
     html += R"html(
@@ -557,6 +586,23 @@ String WebServerHTML::getSettingsHTML(StorageModule* storage, TimeModule* timeMo
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: params
+                })
+                .then(response => response.text())
+                .then(data => {
+                    showAlert(data);
+                })
+                .catch(error => {
+                    showAlert('Error: ' + error, true);
+                });
+            }
+            
+            function saveAudioMode() {
+                const audioMode = document.getElementById('audioMode').value;
+                
+                fetch('/save_audio_mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'audioMode=' + audioMode
                 })
                 .then(response => response.text())
                 .then(data => {

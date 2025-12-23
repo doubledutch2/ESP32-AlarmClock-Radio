@@ -45,6 +45,7 @@ private:
     void handlePlay();
     void handleStop();
     void handleNotFound();
+    void handleSaveAudioMode();
     
     // HTML generation (delegated to WebServerHTML)
     String getMainHTML();

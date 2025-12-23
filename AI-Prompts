@@ -5,7 +5,9 @@
 
 - All settings which can be changed on the TFT screen.  The Webportal should also availabe as a WiFi access point to configure the WiFi Access credentials
 
-- Can you update the time logic to use the ezTime library so we automatically get the correct time zone and are aware of Daylight Savings time. If we are in a country with Day Light Savings time - we need to ensure that the time changes at the correct moment so I guess we have to keep checking this every minute?
+- Can you update the time logic to use the ezTime library so we automatically get the correct time zone and are aware of Daylight Savings time. If we are in a country with Day Light Savings time - we need to ensure that the time changes at the correct moment so I guess we have to keep checking this every minute? Also update the DisplayI9341 logic so it displays the digital clock in the format DDD, DD MMM YYYY HH:MM using the data from this ezTime library and if there is no Alarm set, hide the "ALARM: OFF". This module also doesn't clear the digital clock properly so you can see bits of the previous time on the screen. Fix that as well.
+
+- Using the attached Config.h file - this file contains MODE_SWITCH_PIN. This project contains 2 MAX98357A amplifiers connected to two speakers, these speakers can play sound from the I2S stream from the ESP32 or a radio stations from the connected SI4735-D60-GU. The MODE_SWITCH_PIN is used to select between these audio sources through the CD74HCT4053M96 component. Can you describe the preferred schematics and write a small arduino sketch to implement this switching logic.
 
 
 

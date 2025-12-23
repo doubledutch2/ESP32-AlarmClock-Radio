@@ -52,7 +52,9 @@ public:
     int getInternetStationCount();
     void setInternetStationCount(int count);
     void clearInternetStations();
-    
+    // Audio mode settings (FM Radio vs Internet Radio)
+    bool saveAudioMode(bool useFMRadio);
+    bool loadAudioMode(bool defaultValue = false);  // false = Internet Radio, true = FM Radio
     // Timezone settings using NVS
     bool saveTimezone(long gmtOffset, long dstOffset);
     bool loadTimezone(long &gmtOffset, long &dstOffset);

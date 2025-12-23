@@ -42,6 +42,7 @@ void WebServerModule::begin(const char* mdnsName) {
     server->on("/settings", [this]() { handleSettings(); });
     server->on("/save_timezone", HTTP_POST, [this]() { handleSaveTimezone(); });
     server->on("/save_features", HTTP_POST, [this]() { handleSaveFeatures(); });
+    server->on("/save_audio_mode", HTTP_POST, [this]() { handleSaveAudioMode(); });
     server->on("/control", [this]() { handleControl(); });
     server->on("/set_volume", HTTP_POST, [this]() { handleSetVolume(); });
     server->on("/set_brightness", HTTP_POST, [this]() { handleSetBrightness(); });
@@ -199,7 +200,32 @@ void WebServerModule::handleSaveFeatures() {
         server->send(500, "text/plain", "Failed to save feature flags");
     }
 }
-
+void WebServerModule::handleSaveAudioMode() {
+    if (!server->hasArg("audioMode") || !storage) {
+        server->send(400, "text/plain", "Missing parameters");
+        return;
+    }
+    
+    bool useFMRadio = (server->arg("audioMode") == "1");
+    
+    // Save to storage
+    if (storage->saveAudioMode(useFMRadio)) {
+        // Set the hardware pin immediately
+        pinMode(MODE_SWITCH_PIN, OUTPUT);
+        digitalWrite(MODE_SWITCH_PIN, useFMRadio ? HIGH : LOW);
+        
+        Serial.printf("Audio mode changed via web: %s (MODE_SWITCH_PIN = %s)\n", 
+                     useFMRadio ? "FM Radio" : "Internet Radio",
+                     useFMRadio ? "HIGH" : "LOW");
+        
+        server->send(200, "text/plain", 
+                    String("Audio mode set to ") + 
+                    (useFMRadio ? "FM Radio" : "Internet Radio") + 
+                    ". Mode switch applied immediately.");
+    } else {
+        server->send(500, "text/plain", "Failed to save audio mode");
+    }
+}
 void WebServerModule::handleAddStation() {
     if (!server->hasArg("name") || !server->hasArg("url") || !storage) {
         server->send(400, "text/plain", "Missing parameters or storage not available");

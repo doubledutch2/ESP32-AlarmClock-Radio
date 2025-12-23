@@ -61,9 +61,9 @@
 
 
 // I2S Audio pins (for Internet Radio via MAX98357A)
-#define I2S_LRC          7   // Word Select (shared for both amps)
-#define I2S_BCLK         8  // Bit Clock (shared for both amps)
-#define I2S_DOUT         16  // Data Out LEFT channel (to first MAX98357A)
+#define I2S_LRC          7    // (Green)  To pin 5 ---Word Select (shared for both amps)
+#define I2S_BCLK         8    // (Yellow) To Pin 2 --- Bit Clock (shared for both amps)
+#define I2S_DOUT         16   // (Blue)   To Pin 12 --- Data Out LEFT channel (to first MAX98357A)
 /*
 Pin 40 Currently: 
 

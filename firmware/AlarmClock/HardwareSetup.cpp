@@ -130,7 +130,13 @@ void HardwareSetup::loadSavedSettings() {
     Serial.printf("  LED: %s\n", flags.enableLED ? "ON" : "OFF");
     Serial.printf("  Alarms: %s\n", flags.enableAlarms ? "ON" : "OFF");
     Serial.printf("  FM Radio: %s\n", flags.enableFMRadio ? "ON" : "OFF");
-    
+    // Load audio mode and set MODE_SWITCH_PIN
+    bool useFMRadio = storage->loadAudioMode(false);  // Default to Internet Radio
+    pinMode(MODE_SWITCH_PIN, OUTPUT);
+    digitalWrite(MODE_SWITCH_PIN, useFMRadio ? HIGH : LOW);
+    Serial.printf("Audio mode set: %s (MODE_SWITCH_PIN = %s)\n", 
+                useFMRadio ? "FM Radio" : "Internet Radio",
+                useFMRadio ? "HIGH" : "LOW");    
     // Note: Feature flags affect hardware initialization which happens in Config.h
     // These are loaded here for display but require restart to take effect
 }
