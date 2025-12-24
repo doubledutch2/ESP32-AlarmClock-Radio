@@ -219,7 +219,7 @@ void setup() {
 
   
   // Sets active 32.768kHz crystal (32768Hz)
-  rx.setRefClock(32768);       // Ref = 32768Hz
+  rx.setRefClock(32768);       // Ref = 32768Hz+
   rx.setRefClockPrescaler(1);  // 32768 x 1 = 32768Hz
 
   // Use SI473X_DIGITAL_AUDIO1       - Digital audio output (SI4735 device pins: 3/DCLK, 24/LOUT/DFS, 23/ROUT/DIO )
@@ -264,14 +264,20 @@ void setup() {
   i2s_set_pin(I2S_NUM_0, &pin_config);
   i2s_start(I2S_NUM_0);
 
-  Serial.print("\nI2S setup is done!. Now you can open the Serial Plot Monitor.");
+  Serial.println("\nI2S setup is done!. Now you can open the Serial Plot Monitor.");
   delay(2000);
+  Serial.println("Second I2C Scan");
+  I2CScan();
 
   showHelp();
   showStatus();
+
 }
 
 void loop() {
+
+  static  int   lastRangeLimit  = -1;
+  static  float lastMean        = -1;
 
   if (Serial.available() > 0) {
     char key = Serial.read();
@@ -338,11 +344,13 @@ void loop() {
     // False print statements to "lock range" on serial plotter display
     // Change rangelimit value to adjust "sensitivity"
     int rangelimit = 3000;
+/*
+    Serial.print("1-");
     Serial.print(rangelimit * -1);
     Serial.print(" ");
     Serial.print(rangelimit);
     Serial.print(" ");
-
+*/
 
     // Get I2S data and place in data buffer
     size_t bytesRead = 0;
@@ -361,7 +369,18 @@ void loop() {
         mean /= samples_read;
 
         // Print to serial plotter
-        Serial.println(mean);
+
+        if ((lastRangeLimit != rangelimit) || (lastMean != mean)) {
+          Serial.print("1-");
+          Serial.print(rangelimit * -1);
+          Serial.print(" ");
+          Serial.print(rangelimit);
+          Serial.print(" ");
+          Serial.println(mean);
+
+          lastRangeLimit = rangelimit;
+          lastMean       = mean;
+        }
       }
     }
   }
