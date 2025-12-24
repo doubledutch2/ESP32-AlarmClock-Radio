@@ -9,7 +9,9 @@
 
 - Using the attached Config.h file - this file contains MODE_SWITCH_PIN. This project contains 2 MAX98357A amplifiers connected to two speakers, these speakers can play sound from the I2S stream from the ESP32 or a radio stations from the connected SI4735-D60-GU. The MODE_SWITCH_PIN is used to select between these audio sources through the CD74HCT4053M96 component. Can you describe the preferred schematics and write a small arduino sketch to implement this switching logic.
 
+- I'm now moving on to the Si4735-D60. I have the SSOP package. I believe it has two output types: analogue and digitial. Given I'm using the CD74HCT4053M96 to switch - I assume I have to use the digital one. A few questions to start off with: what do I do with pin 23 and 24 which I believe are only used for analogue? Also pin 17 is labelled as SCLK. In the digital mode, I believe we can not use the external Crystal and need to use the SCLK to get the clock signal from the ESP32. But pin 17 is also the I2C SCL pin. How dow connect this all up together so the chip uses I2C and can be switched tthrough the CD74HCT4053M96
 
+But your previous recommendation was to use the CD74HCT4053M96 to switch LRC; BCLK; and DIN/DOUT between the Si4735 and the I2S signal being streamed from a different audio source generated in ESP32. I would like to stick to that principle if possible
 
 
 
