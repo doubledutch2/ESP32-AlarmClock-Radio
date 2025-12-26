@@ -31,15 +31,6 @@ Everything you need is here: https://pu2clr.github.io/SI4735
   | pin 2     | DFS       |  RC             |  WordSelect / GPIO25                  |
   | pin 3     | DCLK      |  BCLK           |  ContinuousSerialClock) / GPIO33)     |
 
-  The table below shows the SI4735,  DAC CJMCU and ESP32 wireup
-
-  | Si4735    | Function  |  DAC CJMCU      | ESP32                                 |
-  |-----------| ----------|-----------------|---------------------------------------|
-  | pin 1     | DOUT      |  DIN            |  SerialData / GPIO32                  |
-  | pin 2     | DFS       |  WSEL           |  WordSelect / GPIO25                  |
-  | pin 3     | DCLK      |  BCLK           |  ContinuousSerialClock) / GPIO33)     |
-
-
   SI4732 and ESP32 I2C wireup (not checked so far)
 
   | SI4732    | Function  | ESP32               |
@@ -88,10 +79,18 @@ Everything you need is here: https://pu2clr.github.io/SI4735
 
 SI4735 rx;
 
-#define I2S_WS 25
-#define I2S_SD 32
-#define I2S_SCK 33
+#define I2S_WS 7  // Was 25 but is my I2S_LRC = 7 (Si4735 Pin 3 = White)
+#define I2S_SD 8 // Was 32 but is my I2S_BCLK = 8  (Si4735 Pin 2 = Purple)
+#define I2S_SCK 16 // Was 33 but is my I2S_DOUT = 16 (Si4735, Pin 1 = Orange)
 
+/*
+Config:
+
+#define I2S_LRC          7    // (Green)  To pin 5 ---Word Select (shared for both amps)
+#define I2S_BCLK         8    // (Yellow) To Pin 2 --- Bit Clock (shared for both amps)
+#define I2S_DOUT         16   // (Blue)   To Pin 12 --- Data Out LEFT channel (to first MAX98357A)
+
+*/
 #define I2C_SDA 21
 // #define I2C_CLK 22
 #define I2C_SCL 18
@@ -209,9 +208,11 @@ void setup() {
   // Wire.begin(I2C_SDA, I2C_CLK);
   Wire.begin(I2C_SDA, I2C_SCL);
 
+  /*
   delay(500);
   Serial.println("I2C Scan");
   I2CScan();
+  */
 
   delay(500);
   Serial.println("\nrx.setup...");
@@ -219,13 +220,16 @@ void setup() {
 
   
   // Sets active 32.768kHz crystal (32768Hz)
+  Serial.println("1");
   rx.setRefClock(32768);       // Ref = 32768Hz+
+  Serial.println("2");
   rx.setRefClockPrescaler(1);  // 32768 x 1 = 32768Hz
 
   // Use SI473X_DIGITAL_AUDIO1       - Digital audio output (SI4735 device pins: 3/DCLK, 24/LOUT/DFS, 23/ROUT/DIO )
   // Use SI473X_DIGITAL_AUDIO2       - Digital audio output (SI4735 device pins: 3/DCLK, 2/DFS, 1/DIO)
   // Use SI473X_ANALOG_DIGITAL_AUDIO - Analog and digital audio outputs (24/LOUT/ 23/ROUT and 3/DCLK, 2/DFS, 1/DIO)
   // XOSCEN_RCLK                     - Use external source clock (active crystal or signal generator)
+  Serial.println("\nrx.setup...");
   rx.setup(RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);  // Analog and digital audio outputs (LOUT/ROUT and DCLK, DFS, DIO), external RCLK
   // rx.setup(RESET_PIN, -1, FM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);
   Serial.println("SI473X device started with Digital Audio setup!");
@@ -283,35 +287,44 @@ void loop() {
     char key = Serial.read();
     switch (key) {
       case '+':
+        Serial.println("+: Volume Up");
         rx.setVolume(++currentVolume);
         currentVolume = rx.getVolume();
         break;
       case '-':
+        Serial.println("-: Volume Down");
         rx.setVolume(--currentVolume);
         currentVolume = rx.getVolume();
         break;
       case 'a':
       case 'A':
+        Serial.println("A: Switch to AM");
         switchModeAmFm(amLastFrequency);
         break;
       case 'f':
       case 'F':
+        Serial.println("F: Switch to FM");
         switchModeAmFm(fmLastFrequency);  
         break;
       case 'U':
       case 'u':
+        Serial.println("U: Frequency Up");
         rx.frequencyUp();
+        Serial.println("Status");
         showStatus();
         delay(900);
         break;
       case 'D':
       case 'd':
+        Serial.println("D: Frequency Down");
         rx.frequencyDown();
+        Serial.println("Status");
         showStatus();
         delay(900);
         break;
       case 'b':
       case 'B':
+        Serial.println("B: Bandwidth");
         if (rx.isCurrentTuneFM()) {
           Serial.println("Not valid for FM");
         } else {
@@ -325,16 +338,20 @@ void loop() {
         }
         break;
       case 'S':
+        Serial.println("S: Seek Up");
         rx.seekStationUp();
         break;
       case 's':
+        Serial.println("s: Seek Down");
         rx.seekStationDown();
         break;
       case '0':
+        Serial.println("0: Show Status");
         showStatus();
         delay(1200);
         break;
       case '?':
+        Serial.println("?: Show Help");
         showHelp();
         break;
       default:
@@ -371,11 +388,11 @@ void loop() {
         // Print to serial plotter
 
         if ((lastRangeLimit != rangelimit) || (lastMean != mean)) {
-          Serial.print("1-");
+          Serial.print("Range Limit: ");
           Serial.print(rangelimit * -1);
           Serial.print(" ");
           Serial.print(rangelimit);
-          Serial.print(" ");
+          Serial.print(" mean: ");
           Serial.println(mean);
 
           lastRangeLimit = rangelimit;
