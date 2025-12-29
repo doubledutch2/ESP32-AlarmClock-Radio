@@ -5,8 +5,8 @@
 4 - TFT CS
 5 - BTN Select
 6 - BTN Down / BTN Sooze
-7 - I2S - LRC
-8 - I2S - BCLK
+7 - I2S - LRC / DFS / WS - Green
+8 - I2S - BCLK / DCLK / SCK - White
 9 - TFT RST 
 10 -
 11 - Touch DIN / TFT MOSI
@@ -14,7 +14,7 @@
 13 - Touch_DO / TFT Miso
 14 - BTN Setup
 15 - [Bootstrap Don't use] / TFT DC
-16 - I2S: DOUT
+16 - I2S: DOUT / SD - Yellow
 17 - PIN: Mode Switch
 18 - I2C SCL: Yellow
 19 - [Reserved USB]
@@ -27,8 +27,8 @@
 39 - [Input Only - not I2C] - PIN: Next Station
 40 -
 41 - PIN: Audio Reset
-42 - PIN: FM Reset
-45 -
+42 - PIN: FM Reset - White
+45 - FM_RCLK_PIN - Blue
 46 - Touch CS
 47 - TFT LED
 48 - PIN: LED

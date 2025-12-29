@@ -45,7 +45,7 @@
 #define ENABLE_LED          true
 #define ENABLE_ALARMS       true
 #define ENABLE_WEB          true
-#define ENABLE_FM_RADIO     false  // Set to true now that we're using FM
+#define ENABLE_FM_RADIO     true  // Set to true now that we're using FM
 #define ENABLE_PRAM         true
 #define ENABLE_I2C_SCAN     true
 
@@ -111,10 +111,9 @@ Green: T_CS -> move to
 #define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio
 
 // FM Radio pins (only used if ENABLE_FM_RADIO is true)
-#if ENABLE_FM_RADIO
-  #define FM_RESET_PIN     42  // Si4735 reset pin
-  #define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
-#endif
+#define FM_RESET_PIN     42  // White Si4735 reset pin
+#define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
+#define FM_RCLK_PIN      45  // Blue - 32,768 Hz cloced use by the Si4735 
 
 
 

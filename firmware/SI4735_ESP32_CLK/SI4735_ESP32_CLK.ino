@@ -1,15 +1,10 @@
-
-/*
-Everything you need is here: https://pu2clr.github.io/SI4735
-
-*/
 /*
   
-  This sketch was a  Jarno's contribution. 
-  I added the SI4732 wireup documentation and changed the RESET pin setup. 
-  I also added some controls to allow change frequency and band. 
-  I have refenrenced the documentations where this sketch was based on.
+  This sketch use the ESP32 32768 kHz clock source and I2S setup. It is a Jarno's contribution. 
+  You do not need an Active Crystal or other signal generator.  Check the ESP32 and SI473X  wireup below.
+
   I would like to thank Mr. Jarno for his contribution. 
+
 
   SI4735 and ESP32 I2C wireup
 
@@ -18,6 +13,7 @@ Everything you need is here: https://pu2clr.github.io/SI4735
   | pin 15    |   RESET   |   GPIO12            |  
   | pin 18    |   SDIO    |   21 (SDA / GPIO21) |
   | pin 17    |   SCLK    |   22 (SCL / GPIO22) |
+  | pin 19    |   RCLK    |   26                | 
 
   On SI4735, the active crystal or external clock must be connected to the pin 19
 
@@ -31,13 +27,25 @@ Everything you need is here: https://pu2clr.github.io/SI4735
   | pin 2     | DFS       |  RC             |  WordSelect / GPIO25                  |
   | pin 3     | DCLK      |  BCLK           |  ContinuousSerialClock) / GPIO33)     |
 
-  SI4732 and ESP32 I2C wireup (not checked so far)
+  The table below shows the SI4735,  DAC CJMCU and ESP32 wireup
+
+  | Si4735    | Function  |  DAC CJMCU      | ESP32                                 |
+  |-----------| ----------|-----------------|---------------------------------------|
+  | pin 1     | DOUT      |  DIN            |  SerialData / GPIO32                  |
+  | pin 2     | DFS       |  WSEL           |  WordSelect / GPIO25                  |
+  | pin 3     | DCLK      |  BCLK           |  ContinuousSerialClock) / GPIO33)     |
+
+
+  SI4732 and ESP32 I2C and RCLK wireup (not checked so far)
 
   | SI4732    | Function  | ESP32               |
   |-----------| ----------|---------------------|
   | pin  9    |   RESET   |   GPIO12            |  
   | pin 12    |   SDIO    |   21 (SDA / GPIO21) |
   | pin 11    |   SCLK    |   22 (SCL / GPIO22) |
+  | pin 13    |   RCLK    |   26                |
+
+  On SI4732, the active crystal or external clock must be connected to the pin 13
 
   SI4732 and ESP32 I2S wireup
 
@@ -46,9 +54,6 @@ Everything you need is here: https://pu2clr.github.io/SI4735
   | pin  1    |  DFS/WS   | LRCK     |  WordSelect / GPIO25                  |
   | pin 16    |  DIO/SD   | DIN      |  SerialData / GPIO32                  |
   | pin  2    |  DCLK/SCK | BSK      |  ContinuousSerialClock)  / GPIO33     |     
-
-
-  On SI4732, the active crystal or external clock must be connected to the pin 13
 
 
   IMPORTANT: This setup does not work with regular crystal setup. 
@@ -68,32 +73,35 @@ Everything you need is here: https://pu2clr.github.io/SI4735
   A Simple Arduino Bluetooth Music Receiver and Sender for the ESP32: https://github.com/pschatzmann/ESP32-A2DP
   Si4735 I2S module - https://gitlab.com/retrojdm/si4735-i2s-module
 
-  This sketch was written By Jarno Lehtinen, Fev, 2023 (https://github.com/mcgurk?tab=repositories). 
+  The main part of this sketch was written By Jarno Lehtinen, Fev, 2023 (https://github.com/mcgurk?tab=repositories). 
 
 */
 
 #include <SI4735.h>
 #include <driver/i2s.h>
+#include "driver/ledc.h"
+#include "config.h"
 
-#define RESET_PIN 12
+// #define RESET_PIN 12
+// #define RCLK_PIN 26
 
 SI4735 rx;
 
-#define I2S_WS 7  // Was 25 but is my I2S_LRC = 7 (Si4735 Pin 3 = White)
-#define I2S_SD 8 // Was 32 but is my I2S_BCLK = 8  (Si4735 Pin 2 = Purple)
-#define I2S_SCK 16 // Was 33 but is my I2S_DOUT = 16 (Si4735, Pin 1 = Orange)
+// #define I2S_LRC 12 // WS - DFS - GPIO25 -> MAX: (L)RC - (Green)
+// #define I2S_DOUT 11 // SD - DOUT - GPIO32 -> MAX: DIN (Yellow)
+// #define I2S_BCLK 13 // SCK - DCLK - GPIO33 -> MAX: BCLK (White)
 
 /*
-Config:
-
-#define I2S_LRC          7    // (Green)  To pin 5 ---Word Select (shared for both amps)
-#define I2S_BCLK         8    // (Yellow) To Pin 2 --- Bit Clock (shared for both amps)
-#define I2S_DOUT         16   // (Blue)   To Pin 12 --- Data Out LEFT channel (to first MAX98357A)
+| Si4735    | Function  |  DAC MAX98357A  | ESP32                                 |
+  |-----------| ----------|-----------------|---------------------------------------|
+  | pin 1     | DOUT      |  DIN            |  SerialData / GPIO32                  |
+  | pin 2     | DFS       |  RC             |  WordSelect / GPIO25                  |
+  | pin 3     | DCLK      |  BCLK           |  ContinuousSerialClock) / GPIO33)     |
 
 */
-#define I2C_SDA 21
-// #define I2C_CLK 22
-#define I2C_SCL 18
+
+// #define I2C_SDA 21
+// #define I2C_SCL 22
 
 // Define input buffer length
 #define bufferLen 64
@@ -105,11 +113,11 @@ uint16_t currentFrequency;
 uint16_t previousFrequency;
 uint8_t bandwidthIdx = 0;
 const char *bandwidth[] = { "6", "4", "3", "2", "1", "1.8", "2.5" };
-uint8_t currentVolume = 40;
+uint8_t currentVolume = 30;
 
 uint16_t amLastFrequency = 810;
 uint16_t fmLastFrequency = 10390;
-
+uint16_t fmStartFrequency = 10290;
 
 
 
@@ -126,12 +134,26 @@ const i2s_config_t i2s_config = {
 };
 
 const i2s_pin_config_t pin_config = {
-  .bck_io_num = I2S_SCK,
-  .ws_io_num = I2S_WS,
+  .bck_io_num = I2S_BCLK,
+  .ws_io_num = I2S_LRC,
   .data_out_num = -1,
-  .data_in_num = I2S_SD
+  .data_in_num = I2S_DOUT
 };
 
+ledc_timer_config_t ledc_timer = {
+//    .speed_mode = LEDC_HIGH_SPEED_MODE,
+    .duty_resolution = LEDC_TIMER_2_BIT,
+    .timer_num  = LEDC_TIMER_0,
+	  .freq_hz    = 32768
+};
+
+ledc_channel_config_t ledc_channel = {
+    .gpio_num   = FM_RCLK_PIN,
+//    .speed_mode = LEDC_HIGH_SPEED_MODE,
+    .channel    = LEDC_CHANNEL_0,
+    .timer_sel  = LEDC_TIMER_0,
+    .duty       = 2
+};
 
 void showHelp() {
   Serial.println("Type F to FM; A to MW; L to LW; and 1 to SW");
@@ -180,14 +202,14 @@ void switchModeAmFm(uint16_t f ) {
 
   if ( rx.isCurrentTuneFM() ) {
         fmLastFrequency = currentFrequency;
-        rx.setup(RESET_PIN, -1, AM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);  
+        rx.setup(FM_RESET_PIN, -1, AM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);  
         rx.setAM(570, 1710, f, 10);
         rx.digitalOutputSampleRate(48000);
         rx.digitalOutputFormat(0 , 0 , 0 , 0 );
         rx.setVolume(currentVolume);  
   } else {
         amLastFrequency = currentFrequency;
-        rx.setup(RESET_PIN, -1, FM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);  
+        rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);  
         rx.setFM(8400, 10800, f, 10);  
         rx.digitalOutputSampleRate(48000);
         rx.digitalOutputFormat(0 , 0 , 0 , 0 );
@@ -203,38 +225,32 @@ void setup() {
   while (!Serial)
     ;
 
-  digitalWrite(RESET_PIN, HIGH);
+  digitalWrite(FM_RESET_PIN, HIGH);
 
-  // Wire.begin(I2C_SDA, I2C_CLK);
   Wire.begin(I2C_SDA, I2C_SCL);
-
-  /*
-  delay(500);
-  Serial.println("I2C Scan");
-  I2CScan();
-  */
 
   delay(500);
   Serial.println("\nrx.setup...");
   Serial.flush();
 
+  // create 32768 clock with ESP32
+  ledc_timer_config(&ledc_timer);
+  ledc_channel_config(&ledc_channel);
   
   // Sets active 32.768kHz crystal (32768Hz)
-  Serial.println("1");
-  rx.setRefClock(32768);       // Ref = 32768Hz+
-  Serial.println("2");
+  rx.setRefClock(32768);       // Ref = 32768Hz
   rx.setRefClockPrescaler(1);  // 32768 x 1 = 32768Hz
 
   // Use SI473X_DIGITAL_AUDIO1       - Digital audio output (SI4735 device pins: 3/DCLK, 24/LOUT/DFS, 23/ROUT/DIO )
   // Use SI473X_DIGITAL_AUDIO2       - Digital audio output (SI4735 device pins: 3/DCLK, 2/DFS, 1/DIO)
   // Use SI473X_ANALOG_DIGITAL_AUDIO - Analog and digital audio outputs (24/LOUT/ 23/ROUT and 3/DCLK, 2/DFS, 1/DIO)
   // XOSCEN_RCLK                     - Use external source clock (active crystal or signal generator)
-  Serial.println("\nrx.setup...");
-  rx.setup(RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);  // Analog and digital audio outputs (LOUT/ROUT and DCLK, DFS, DIO), external RCLK
-  // rx.setup(RESET_PIN, -1, FM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);
+  // rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);  // Analog and digital audio outputs (LOUT/ROUT and DCLK, DFS, DIO), external RCLK
+  rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);
   Serial.println("SI473X device started with Digital Audio setup!");
   delay(1000);
-  rx.setFM(8400, 10800, 10270, 10);  // frequency station 10650 (106.50 MHz)
+  // rx.setFM(8400, 10800, 10270, 10);  // frequency station 10650 (106.50 MHz)
+  rx.setFM(8400, 10800, fmStartFrequency, 10);  // frequency station 10650 (106.50 MHz)
   // rx.setAM(570, 1710, 810, 10);
   delay(500);
   Serial.print("\nrx.getFrequency: ");
@@ -268,63 +284,48 @@ void setup() {
   i2s_set_pin(I2S_NUM_0, &pin_config);
   i2s_start(I2S_NUM_0);
 
-  Serial.println("\nI2S setup is done!. Now you can open the Serial Plot Monitor.");
+  Serial.print("\nI2S setup is done!. Now you can open the Serial Plot Monitor.");
   delay(2000);
-  Serial.println("Second I2C Scan");
-  I2CScan();
 
   showHelp();
   showStatus();
-
 }
 
 void loop() {
-
-  static  int   lastRangeLimit  = -1;
-  static  float lastMean        = -1;
 
   if (Serial.available() > 0) {
     char key = Serial.read();
     switch (key) {
       case '+':
-        Serial.println("+: Volume Up");
         rx.setVolume(++currentVolume);
         currentVolume = rx.getVolume();
         break;
       case '-':
-        Serial.println("-: Volume Down");
         rx.setVolume(--currentVolume);
         currentVolume = rx.getVolume();
         break;
       case 'a':
       case 'A':
-        Serial.println("A: Switch to AM");
         switchModeAmFm(amLastFrequency);
         break;
       case 'f':
       case 'F':
-        Serial.println("F: Switch to FM");
         switchModeAmFm(fmLastFrequency);  
         break;
       case 'U':
       case 'u':
-        Serial.println("U: Frequency Up");
         rx.frequencyUp();
-        Serial.println("Status");
         showStatus();
         delay(900);
         break;
       case 'D':
       case 'd':
-        Serial.println("D: Frequency Down");
         rx.frequencyDown();
-        Serial.println("Status");
         showStatus();
         delay(900);
         break;
       case 'b':
       case 'B':
-        Serial.println("B: Bandwidth");
         if (rx.isCurrentTuneFM()) {
           Serial.println("Not valid for FM");
         } else {
@@ -338,20 +339,16 @@ void loop() {
         }
         break;
       case 'S':
-        Serial.println("S: Seek Up");
         rx.seekStationUp();
         break;
       case 's':
-        Serial.println("s: Seek Down");
         rx.seekStationDown();
         break;
       case '0':
-        Serial.println("0: Show Status");
         showStatus();
         delay(1200);
         break;
       case '?':
-        Serial.println("?: Show Help");
         showHelp();
         break;
       default:
@@ -360,14 +357,13 @@ void loop() {
   } else {
     // False print statements to "lock range" on serial plotter display
     // Change rangelimit value to adjust "sensitivity"
+    /* LDB
     int rangelimit = 3000;
-/*
-    Serial.print("1-");
     Serial.print(rangelimit * -1);
     Serial.print(" ");
     Serial.print(rangelimit);
     Serial.print(" ");
-*/
+    LDB */
 
     // Get I2S data and place in data buffer
     size_t bytesRead = 0;
@@ -386,96 +382,8 @@ void loop() {
         mean /= samples_read;
 
         // Print to serial plotter
-
-        if ((lastRangeLimit != rangelimit) || (lastMean != mean)) {
-          Serial.print("Range Limit: ");
-          Serial.print(rangelimit * -1);
-          Serial.print(" ");
-          Serial.print(rangelimit);
-          Serial.print(" mean: ");
-          Serial.println(mean);
-
-          lastRangeLimit = rangelimit;
-          lastMean       = mean;
-        }
+        // LDB Serial.println(mean);
       }
     }
-  }
-}
-void displayRSSI (int rssi) {
-/*
-  Excellent (Strongest): -30 dBm to -50 dBm (Ideal for gaming, 4K streaming).
-  Good/Average: -50 dBm to -70 dBm (Great for browsing, HD video).
-  Fair/Moderate: -70 dBm to -80 dBm (Okay for basic use, but speeds slow).
-  Weak/Poor: Below -80 dBm (Expect interruptions, slow speeds, potential disconnections).
-  No Signal: Below -90 dBm to -110 dBm (Unusable). 
-*/
-  char  rssiStatus[25];
-  if (rssi < -90) {
-    strcpy(rssiStatus,"Unusable");
-  }
-  else if (rssi < -80) {
-    strcpy(rssiStatus,"Expect interuptions");
-  }
-  else if (rssi < -70) {
-    strcpy(rssiStatus,"OK but slow");
-  }
-  else if (rssi < -50) {
-    strcpy(rssiStatus,"Great for browsing");
-  }
-  else {
-    strcpy(rssiStatus,"Ideal");
-  }
-
-  Serial.print("RSSI: ");
-  Serial.print(rssi);
-  Serial.print(" ");
-  Serial.println(rssiStatus);
-
-}
-
-void I2CScan() {
-  int  sizeBuf = 100;
-  char displayBuf[100] = "";
-  char hexChar[10];
-
-  // Wire.begin(I2C_SDA, I2C_SCL);
-  // delay(100);
-  byte error, address;
-  int nDevices;
-
-  Serial.println("Scanning...");
-
-  nDevices = 0;
-  for(address = 1; address < 127; address++ ) {
-      Wire.beginTransmission(address);
-      error = Wire.endTransmission();
-
-      if (error == 0) {
-          if (nDevices == 0) {
-              Serial.print("I2C device found at address: ");
-          }
-          else {
-              Serial.print(", ");
-          }
-          
-          sprintf(hexChar,"0x%02x",address);
-          Serial.print("HexChar: ");
-          Serial.println(hexChar);
-          if (strlen(displayBuf) < sizeBuf - 5) {
-              if (nDevices > 0) {
-                  strcat(displayBuf,", ");
-              }
-              strcat(displayBuf,hexChar);
-          }
-          nDevices++;
-      }
-  }  
-
-  if (nDevices == 0) {
-      Serial.println("No I2C devices found\n");
-  }
-  else {
-      Serial.println(displayBuf);
   }
 }
