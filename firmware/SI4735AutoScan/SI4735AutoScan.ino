@@ -5,6 +5,7 @@
 // const int FM_RCLK_PIN = 16; 
 SI4735 radio;
 
+
 void setup() {
   Serial.begin(115200);
   while (!Serial);
@@ -24,7 +25,8 @@ void setup() {
   delay(100);
 
   // 0=Ext Clock, 1=FM, DIGITAL_AUDIO1=Pins 1,2,3
-  radio.setup(FM_RESET_PIN, 0, 1, SI473X_DIGITAL_AUDIO1); 
+  radio.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);  
+  //radio.setup(FM_RESET_PIN, 0, 1, SI473X_DIGITAL_AUDIO1); 
   radio.digitalOutputFormat(0, 0, 0, 0); 
   radio.digitalOutputSampleRate(44100);
   radio.setVolume(63); // Set digital gain to max

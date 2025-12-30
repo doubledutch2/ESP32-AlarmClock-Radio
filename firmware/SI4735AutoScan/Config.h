@@ -53,7 +53,7 @@
 // *** LOCKED - DO NOT CHANGE THESE PINS ***
 
 // I2C pins (Shared by OLED and RDA5807)
-#define I2C_SDA          21 // Green
+#define I2C_SDA          17 // Green
 #define I2C_SCL          18 // Yellow
 
 // uint8_t rdaAddresses[] = {0x10, 0x11, 0};7
@@ -108,7 +108,7 @@ Green: T_CS -> move to
 #define ENABLE_TOUCHSCREEN     true
 #define INIT_TOUCHSCREEN_FIRST false
 
-#define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio
+#define MODE_SWITCH_PIN  21  // 42 Switch between Internet/FM radio
 
 // FM Radio pins (only used if ENABLE_FM_RADIO is true)
 #define FM_RESET_PIN     42  // White Si4735 reset pin

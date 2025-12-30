@@ -117,7 +117,7 @@ uint8_t currentVolume = 30;
 
 uint16_t amLastFrequency = 810;
 uint16_t fmLastFrequency = 10390;
-uint16_t fmStartFrequency = 10290;
+uint16_t fmStartFrequency = 10560;
 
 
 
@@ -140,6 +140,7 @@ const i2s_pin_config_t pin_config = {
   .data_in_num = I2S_DOUT
 };
 
+/*
 ledc_timer_config_t ledc_timer = {
 //    .speed_mode = LEDC_HIGH_SPEED_MODE,
     .duty_resolution = LEDC_TIMER_2_BIT,
@@ -154,6 +155,24 @@ ledc_channel_config_t ledc_channel = {
     .timer_sel  = LEDC_TIMER_0,
     .duty       = 2
 };
+*/
+
+// 8-bit resolution gives us a range of 0-255
+ledc_timer_config_t ledc_timer = {
+    .speed_mode      = LEDC_LOW_SPEED_MODE,
+    .duty_resolution = LEDC_TIMER_8_BIT, // Increased resolution [cite: 69]
+    .timer_num       = LEDC_TIMER_0,
+    .freq_hz         = 32768             // Target frequency [cite: 69]
+};
+
+ledc_channel_config_t ledc_channel = {
+    .gpio_num   = FM_RCLK_PIN,           // GPIO 45 [cite: 70]
+    .speed_mode = LEDC_LOW_SPEED_MODE,
+    .channel    = LEDC_CHANNEL_0,
+    .timer_sel  = LEDC_TIMER_0,
+    .duty       = 128                    // 128 is exactly 50% of 256 [cite: 70]
+};
+
 
 void showHelp() {
   Serial.println("Type F to FM; A to MW; L to LW; and 1 to SW");
@@ -202,14 +221,14 @@ void switchModeAmFm(uint16_t f ) {
 
   if ( rx.isCurrentTuneFM() ) {
         fmLastFrequency = currentFrequency;
-        rx.setup(FM_RESET_PIN, -1, AM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);  
+        rx.setup(FM_RESET_PIN, -1, AM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);  
         rx.setAM(570, 1710, f, 10);
         rx.digitalOutputSampleRate(48000);
         rx.digitalOutputFormat(0 , 0 , 0 , 0 );
         rx.setVolume(currentVolume);  
   } else {
         amLastFrequency = currentFrequency;
-        rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);  
+        rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);  
         rx.setFM(8400, 10800, f, 10);  
         rx.digitalOutputSampleRate(48000);
         rx.digitalOutputFormat(0 , 0 , 0 , 0 );
@@ -242,11 +261,11 @@ void setup() {
   rx.setRefClockPrescaler(1);  // 32768 x 1 = 32768Hz
 
   // Use SI473X_DIGITAL_AUDIO1       - Digital audio output (SI4735 device pins: 3/DCLK, 24/LOUT/DFS, 23/ROUT/DIO )
-  // Use SI473X_DIGITAL_AUDIO2       - Digital audio output (SI4735 device pins: 3/DCLK, 2/DFS, 1/DIO)
+  // Use SI473X_ANALOG_DIGITAL_AUDIO       - Digital audio output (SI4735 device pins: 3/DCLK, 2/DFS, 1/DIO)
   // Use SI473X_ANALOG_DIGITAL_AUDIO - Analog and digital audio outputs (24/LOUT/ 23/ROUT and 3/DCLK, 2/DFS, 1/DIO)
   // XOSCEN_RCLK                     - Use external source clock (active crystal or signal generator)
   // rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);  // Analog and digital audio outputs (LOUT/ROUT and DCLK, DFS, DIO), external RCLK
-  rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_DIGITAL_AUDIO2, XOSCEN_RCLK);
+  rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);
   Serial.println("SI473X device started with Digital Audio setup!");
   delay(1000);
   // rx.setFM(8400, 10800, 10270, 10);  // frequency station 10650 (106.50 MHz)
