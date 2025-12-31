@@ -181,6 +181,8 @@ void showHelp() {
   Serial.println("Type + or - to volume Up or Down");
   Serial.println("Type 0 to show current status");
   Serial.println("Type B to change Bandwidth filter");
+  Serial.println("Type X to scan scannels");
+  Serial.println("Type nnnnn to move to Frequency nnnnn e.g 10650 = 106.50kHz");
   Serial.println("Type ? to this help.");
   Serial.println("==================================================");
   delay(1000);
@@ -206,7 +208,7 @@ void showStatus() {
 
   Serial.print(" Signal:");
   Serial.print(rx.getCurrentRSSI());
-  Serial.println("dBuV");
+  Serial.print("dBuV ");
 
   Serial.print(" Volume:");
   Serial.print(rx.getVolume());
@@ -311,67 +313,104 @@ void setup() {
 }
 
 void loop() {
+static String inString = "";
 
+  // Read serial input:
   if (Serial.available() > 0) {
     char key = Serial.read();
-    switch (key) {
-      case '+':
-        rx.setVolume(++currentVolume);
-        currentVolume = rx.getVolume();
-        break;
-      case '-':
-        rx.setVolume(--currentVolume);
-        currentVolume = rx.getVolume();
-        break;
-      case 'a':
-      case 'A':
-        switchModeAmFm(amLastFrequency);
-        break;
-      case 'f':
-      case 'F':
-        switchModeAmFm(fmLastFrequency);  
-        break;
-      case 'U':
-      case 'u':
-        rx.frequencyUp();
-        showStatus();
-        delay(900);
-        break;
-      case 'D':
-      case 'd':
-        rx.frequencyDown();
-        showStatus();
-        delay(900);
-        break;
-      case 'b':
-      case 'B':
-        if (rx.isCurrentTuneFM()) {
-          Serial.println("Not valid for FM");
-        } else {
-          if (bandwidthIdx > 6)
-            bandwidthIdx = 0;
-          rx.setBandwidth(bandwidthIdx, 1);
-          Serial.print("Filter - Bandwidth: ");
-          Serial.print(String(bandwidth[bandwidthIdx]));
-          Serial.println(" kHz");
-          bandwidthIdx++;
-        }
-        break;
-      case 'S':
-        rx.seekStationUp();
-        break;
-      case 's':
-        rx.seekStationDown();
-        break;
-      case '0':
-        showStatus();
-        delay(1200);
-        break;
-      case '?':
-        showHelp();
-        break;
-      default:
-        break;
+
+    int inChar = (int) key;
+    if (inChar == '\n') {
+      if (!inString.isEmpty()) { // we have digits
+        rx.setFrequency(inString.toInt());
+        delay(50);
+        showStatus;
+        // clear the string for new input:
+        inString = "";
+      }
+    }
+    if (isDigit(inChar)) {
+      // convert the incoming byte to a char and add it to the string:
+      inString += key;
+    }
+    else {
+      switch (key) {
+        case '+':
+          Serial.print("+: Volume Up - new volume: ");
+          rx.setVolume(++currentVolume);
+          currentVolume = rx.getVolume();
+          Serial.println(currentVolume);
+          break;
+        case '-':
+          Serial.print("-: Volume Down - new volume: ");
+          rx.setVolume(--currentVolume);
+          currentVolume = rx.getVolume();
+          Serial.println("currentVolume");
+          break;
+        case 'a':
+        case 'A':
+          Serial.println("A: Switch to AM");
+          switchModeAmFm(amLastFrequency);
+          break;
+        case 'f':
+        case 'F':
+          Serial.println("F: Switch to FM");
+          switchModeAmFm(fmLastFrequency);  
+          break;
+        case 'U':
+        case 'u':
+          Serial.println("U: Frequency Up");
+          rx.frequencyUp();
+          showStatus();
+          delay(900);
+          break;
+        case 'D':
+        case 'd':
+          Serial.println("D: Frequency Down");
+          rx.frequencyDown();
+          showStatus();
+          delay(900);
+          break;
+        case 'b':
+        case 'B':
+          Serial.println("B: Change Bandwith Filter");
+          if (rx.isCurrentTuneFM()) {
+            Serial.println("Not valid for FM");
+          } else {
+            if (bandwidthIdx > 6)
+              bandwidthIdx = 0;
+            rx.setBandwidth(bandwidthIdx, 1);
+            Serial.print("Filter - Bandwidth: ");
+            Serial.print(String(bandwidth[bandwidthIdx]));
+            Serial.println(" kHz");
+            bandwidthIdx++;
+          }
+          break;
+        case 'S':
+          Serial.println("S: Seek Station Up");
+          rx.seekStationUp();
+          showStatus();
+          break;
+        case 's':
+          Serial.println("s: Seek Station down");
+          rx.seekStationDown();
+          showStatus();
+          break;
+        case 'x':
+        case 'X':
+          Serial.println("X: Scan Channels");
+          scanChannels();
+          break;
+        case '0':
+          showStatus();
+          delay(1200);
+          break;
+        case '?':
+          showHelp();
+          break;
+        default:
+          break;
+      }
     }
   } else {
     // False print statements to "lock range" on serial plotter display
@@ -406,3 +445,30 @@ void loop() {
     }
   }
 }
+void scanChannels()
+{
+  int oldFrequency = rx.getFrequency();
+  Serial.print("Scanning - old frequency: ");
+  Serial.println(oldFrequency);
+
+  for (int freq = 8750; freq <= 10800; freq += 10) {
+    rx.setFrequency(freq);
+    delay(50); // Give the tuner a moment to settle
+    rx.getCurrentReceivedSignalQuality();
+    
+    int rssi = rx.getCurrentRSSI();
+    int snr = rx.getCurrentSNR();
+
+    // Only print if there is even a hint of a station
+    if (rssi > 15 && snr > 0) {
+      Serial.print(freq / 100.0);
+      Serial.print(" | "); Serial.print(rssi);
+      Serial.print(" | "); Serial.println(snr);
+    }
+  }
+  Serial.print("Scan complete - move back to old frequency: ");
+  Serial.println(oldFrequency);
+  rx.setFrequency(oldFrequency);
+
+}
+  
