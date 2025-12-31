@@ -538,6 +538,12 @@ void showRDS() {
           Serial.println(rdsTime);
         }
       }
+      else {
+        // Serial.println("no RDS Sync");
+      }
+    }
+    else {
+      // Serial.println("No RDS received");
     }
   }
 }
