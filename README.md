@@ -24,6 +24,11 @@ Internet radio alarm clock with FM/AM radio, TFT display, and web interface.
 - LDO (AP2112K-3.3TRG1) to step down to 3.3V (LCSC: C17178)
 - CD74HCT4053M96 multiplexer that can switch 5V on 3.3V signal (Check ESP32 Audio Switch Wiring Diagram in Gemini) (LCSC: C6559)
 
+SMD Parts:
+- ESP: ESP32-S3-WROOM-1U-N16R8 (with Antenna connector)
+       ESP32-S3-WROOM-1-N16R8 (with onboard antenna)
+- SI4735-D60: SI4735-D60-GMR (3x3 cm)
+
 ## Partitioning
 
 You need a partition scheme for the ESP32-S3-N16R8 which allows for 3Mb App, LittleFS. Creata file called, which is stored in partitions.csv which is in the .ino directory

@@ -80,9 +80,9 @@ Green: T_CS -> move to
 
 // #define TOUCH_IRQ 	n/a
 #define TOUCH_DO 	13
-#define TOUCH_DIN 11
+#define TOUCH_DIN 	11
 #define TOUCH_CS 	46 // 33 
-#define TOUCH_CLK 12
+#define TOUCH_CLK 	12
 
 #define TFT_MISO	13
 #define TFT_LED		47
@@ -112,7 +112,7 @@ Green: T_CS -> move to
 
 // FM Radio pins (only used if ENABLE_FM_RADIO is true)
 #define FM_RESET_PIN     42  // White Si4735 reset pin
-#define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
+// #define AUDIO_SWITCH_PIN 41  // Same as Mode Switch PIN I think?
 #define FM_RCLK_PIN      45  // Blue - 32,768 Hz cloced use by the Si4735 
 
 
