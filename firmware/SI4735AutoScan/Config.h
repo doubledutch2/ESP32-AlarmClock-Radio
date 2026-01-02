@@ -56,14 +56,18 @@
 #define I2C_SDA          17 // Green
 #define I2C_SCL          18 // Yellow
 
-// uint8_t rdaAddresses[] = {0x10, 0x11, 0};7
-
-
-
 // I2S Audio pins (for Internet Radio via MAX98357A)
 #define I2S_LRC          7    // (Green)  To pin 5 ---Word Select (shared for both amps)
 #define I2S_BCLK         8    // (Yellow) To Pin 2 --- Bit Clock (shared for both amps)
 #define I2S_DOUT         16   // (Blue)   To Pin 12 --- Data Out LEFT channel (to first MAX98357A)
+
+// FM Radio pins (only used if ENABLE_FM_RADIO is true)
+#define FM_RESET_PIN     42  // White Si4735 reset pin
+#define FM_RCLK_PIN      45  // Blue - 32,768 Hz cloced use by the Si4735 
+
+#define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
+
+
 /*
 Pin 40 Currently: 
 
@@ -110,10 +114,7 @@ Green: T_CS -> move to
 
 #define MODE_SWITCH_PIN  21  // 42 Switch between Internet/FM radio
 
-// FM Radio pins (only used if ENABLE_FM_RADIO is true)
-#define FM_RESET_PIN     42  // White Si4735 reset pin
-#define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
-#define FM_RCLK_PIN      45  // Blue - 32,768 Hz cloced use by the Si4735 
+
 
 
 

@@ -119,7 +119,13 @@ uint16_t amLastFrequency = 810;
 uint16_t fmLastFrequency = 10390;
 uint16_t fmStartFrequency = 10560;
 
-
+// Add these to your global variables section
+char *stationName;
+char *rdsText;
+char *rdsTime;
+char lastStationName[10]; // To track changes
+unsigned long rdsDelay = 500; 
+unsigned long lastRdsCheck = 0;
 
 const i2s_config_t i2s_config = {
   .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
@@ -181,6 +187,9 @@ void showHelp() {
   Serial.println("Type + or - to volume Up or Down");
   Serial.println("Type 0 to show current status");
   Serial.println("Type B to change Bandwidth filter");
+  Serial.println("Type X to scan scannels");
+  Serial.println("Type R to show RDS data");
+  Serial.println("Type nnnnn to move to Frequency nnnnn e.g 10650 = 106.50kHz");
   Serial.println("Type ? to this help.");
   Serial.println("==================================================");
   delay(1000);
@@ -200,17 +209,17 @@ void showStatus() {
     Serial.print(currentFrequency);
     Serial.print("kHz");
   }
-  Serial.print(" [SNR:");
+  Serial.print(", SNR:");
   Serial.print(rx.getCurrentSNR());
   Serial.print("dB");
 
-  Serial.print(" Signal:");
+  Serial.print(", Signal:");
   Serial.print(rx.getCurrentRSSI());
-  Serial.println("dBuV");
+  Serial.print("dBuV ");
 
   Serial.print(" Volume:");
   Serial.print(rx.getVolume());
-  Serial.println("]");
+  Serial.println("");
 
 }
 
@@ -266,6 +275,8 @@ void setup() {
   // XOSCEN_RCLK                     - Use external source clock (active crystal or signal generator)
   // rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);  // Analog and digital audio outputs (LOUT/ROUT and DCLK, DFS, DIO), external RCLK
   rx.setup(FM_RESET_PIN, -1, FM_CURRENT_MODE, SI473X_ANALOG_DIGITAL_AUDIO, XOSCEN_RCLK);
+  rx.setRdsConfig(1, 1, 1, 1, 1); // Enables RDS processing 
+  rx.setFifoCount(1);
   Serial.println("SI473X device started with Digital Audio setup!");
   delay(1000);
   // rx.setFM(8400, 10800, 10270, 10);  // frequency station 10650 (106.50 MHz)
@@ -311,67 +322,126 @@ void setup() {
 }
 
 void loop() {
+static String inString = "";
 
+  // Check for RDS data every 500ms without blocking audio
+  if (millis() - lastRdsCheck > rdsDelay) {
+    showRDS();
+    lastRdsCheck = millis();
+  }
+
+  // Read serial input:
   if (Serial.available() > 0) {
     char key = Serial.read();
-    switch (key) {
-      case '+':
-        rx.setVolume(++currentVolume);
-        currentVolume = rx.getVolume();
+
+    int inChar = (int) key;
+    if (inChar == '\n') {
+      if (!inString.isEmpty()) { // we have digits
+        Serial.print("Switch to frequency: ");
+        Serial.println(inString);
+        rx.setFrequency(inString.toInt());
+        delay(50);
+        showStatus;
+        // clear the string for new input:
+        inString = "";
+      }
+    }
+    if (isDigit(inChar)) {
+      // convert the incoming byte to a char and add it to the string:
+      inString += key;
+    }
+    else {
+      switch (key) {
+
+        case 'r':
+        case 'R':
+          showStatus();
+          showRDS(); // Force an immediate RDS check
+          delay(1200); 
         break;
-      case '-':
-        rx.setVolume(--currentVolume);
-        currentVolume = rx.getVolume();
-        break;
-      case 'a':
-      case 'A':
-        switchModeAmFm(amLastFrequency);
-        break;
-      case 'f':
-      case 'F':
-        switchModeAmFm(fmLastFrequency);  
-        break;
-      case 'U':
-      case 'u':
-        rx.frequencyUp();
-        showStatus();
-        delay(900);
-        break;
-      case 'D':
-      case 'd':
-        rx.frequencyDown();
-        showStatus();
-        delay(900);
-        break;
-      case 'b':
-      case 'B':
-        if (rx.isCurrentTuneFM()) {
-          Serial.println("Not valid for FM");
-        } else {
-          if (bandwidthIdx > 6)
-            bandwidthIdx = 0;
-          rx.setBandwidth(bandwidthIdx, 1);
-          Serial.print("Filter - Bandwidth: ");
-          Serial.print(String(bandwidth[bandwidthIdx]));
-          Serial.println(" kHz");
-          bandwidthIdx++;
-        }
-        break;
-      case 'S':
-        rx.seekStationUp();
-        break;
-      case 's':
-        rx.seekStationDown();
-        break;
-      case '0':
-        showStatus();
-        delay(1200);
-        break;
-      case '?':
-        showHelp();
-        break;
-      default:
-        break;
+        case '+':
+          Serial.print("+: Volume Up - new volume: ");
+          rx.setVolume(++currentVolume);
+          currentVolume = rx.getVolume();
+          Serial.println(currentVolume);
+          break;
+        case '-':
+          Serial.print("-: Volume Down - new volume: ");
+          rx.setVolume(--currentVolume);
+          currentVolume = rx.getVolume();
+          Serial.println(currentVolume);
+          break;
+        case 'a':
+        case 'A':
+          clearRDS();
+          Serial.println("A: Switch to AM");
+          switchModeAmFm(amLastFrequency);
+          break;
+        case 'f':
+        case 'F':
+          clearRDS();
+          Serial.println("F: Switch to FM");
+          switchModeAmFm(fmLastFrequency);  
+          break;
+        case 'U':
+        case 'u':
+          clearRDS();
+          Serial.println("U: Frequency Up");
+          rx.frequencyUp();
+          showStatus();
+          delay(900);
+          break;
+        case 'D':
+        case 'd':
+          clearRDS();
+          Serial.println("D: Frequency Down");
+          rx.frequencyDown();
+          showStatus();
+          delay(900);
+          break;
+        case 'b':
+        case 'B':
+          Serial.println("B: Change Bandwith Filter");
+          if (rx.isCurrentTuneFM()) {
+            Serial.println("Not valid for FM");
+          } else {
+            if (bandwidthIdx > 6)
+              bandwidthIdx = 0;
+            rx.setBandwidth(bandwidthIdx, 1);
+            Serial.print("Filter - Bandwidth: ");
+            Serial.print(String(bandwidth[bandwidthIdx]));
+            Serial.println(" kHz");
+            bandwidthIdx++;
+          }
+          break;
+        case 'S':
+          clearRDS();
+          Serial.println("S: Seek Station Up");
+          rx.seekStationUp();
+          showStatus();
+          break;
+        case 's':
+          clearRDS();
+          Serial.println("s: Seek Station down");
+          rx.seekStationDown();
+          showStatus();
+          break;
+        case 'x':
+        case 'X':
+          clearRDS();
+          Serial.println("X: Scan Channels");
+          scanChannels();
+          break;
+        case '0':
+          showStatus();
+          delay(1200);
+          break;
+        case '?':
+          showHelp();
+          break;
+        default:
+          break;
+      }
     }
   } else {
     // False print statements to "lock range" on serial plotter display
@@ -403,6 +473,77 @@ void loop() {
         // Print to serial plotter
         // LDB Serial.println(mean);
       }
+    }
+  }
+}
+void scanChannels()
+{
+  int oldFrequency = rx.getFrequency();
+  Serial.print("Scanning - old frequency: ");
+  Serial.println(oldFrequency);
+
+  for (int freq = 8750; freq <= 10800; freq += 10) {
+    rx.setFrequency(freq);
+    delay(200); // Give the tuner a moment to settle
+    rx.getCurrentReceivedSignalQuality();
+    
+    int rssi = rx.getCurrentRSSI();
+    int snr = rx.getCurrentSNR();
+
+    // Only print if there is even a hint of a station
+    if (rssi > 15 && snr > 0) {
+      Serial.print(freq / 100.0);
+      Serial.print(" | "); Serial.print(rssi);
+      Serial.print(" | "); Serial.println(snr);
+    }
+  }
+  Serial.print("Scan complete - move back to old frequency: ");
+  Serial.println(oldFrequency);
+  rx.setFrequency(oldFrequency);
+
+}
+
+/**
+ * Clears RDS data pointers and internal buffers on frequency change
+ */
+void clearRDS() {
+  stationName = NULL;
+  rdsText = NULL;
+  rdsTime = NULL;
+  lastStationName[0] = '\0'; // Reset tracking string
+  rx.clearRdsBuffer(); 
+  Serial.println("\n--- Station Changed: RDS Buffer Cleared ---");
+}
+
+/**
+ * Retrieves RDS data: Station Name, Radio Text, and Time/Date
+ */
+void showRDS() {
+  if (rx.isCurrentTuneFM()) {
+    rx.getRdsStatus();
+    if (rx.getRdsReceived()) {
+      if (rx.getRdsSync()) {
+        
+        // 1. Get Radio Text (often includes station name and song info)
+        rdsText = rx.getRdsText();
+        if (rdsText != NULL && strlen(rdsText) > 0) {
+          Serial.print("\n[RDS Text]: ");
+          Serial.println(rdsText);
+        }
+
+        // 2. Get RDS Time and Date
+        rdsTime = rx.getRdsTime();
+        if (rdsTime != NULL && strlen(rdsTime) > 0) {
+          Serial.print("[RDS Time]: ");
+          Serial.println(rdsTime);
+        }
+      }
+      else {
+        // Serial.println("no RDS Sync");
+      }
+    }
+    else {
+      // Serial.println("No RDS received");
     }
   }
 }
