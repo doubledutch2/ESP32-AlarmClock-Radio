@@ -17,20 +17,20 @@ NEW
 14 - BTN Setup
 15 - [Bootstrap Don't use] / TFT DC
 16 - I2S: DOUT / SD - Yellow
-17 - *** I2C SDA *** PIN: Mode Switch 
+17 - PIN: Mode Switch 
 18 - I2C SCL: Yellow
 19 - [Reserved USB]
 20 - [Reserved USB]
-21 - *** PIN MODE SWITCH ***I2C SDA: Green
-35 - [Input Only - not I2C]
-36 - [Input Only - not I2C]
-37 - [Input Only - not I2C]
-38 - [Input Only - not I2C] - PIN: Brightness
-39 - [Input Only - not I2C] - PIN: Next Station
-40 -
+21 - I2C SDA: Green
+35 - Reserved for Flash/PSRAM
+36 - Reserved for Flash/PSRAM
+37 - Reserved for Flash/PSRAM
+38 - PIN: Brightness
+39 - 
+40 - FM_RCLK_PIN
 41 - PIN: Audio Reset
 42 - PIN: FM Reset - White
-45 - FM_RCLK_PIN - Blue
+45 - PIN: Next Station
 46 - Touch CS
 47 - TFT LED
 48 - PIN: LED
