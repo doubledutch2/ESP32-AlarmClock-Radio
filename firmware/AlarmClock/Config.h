@@ -63,7 +63,7 @@
 
 #define FM_RESET_PIN     42  // White Si4735 reset pin
 #define FM_RCLK_PIN      40  // Blue - 32,768 Hz cloced use by the Si4735 
-#define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
+// #define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
 
 /* 
 

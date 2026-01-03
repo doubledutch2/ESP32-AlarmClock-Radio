@@ -45,7 +45,7 @@
 #define ENABLE_LED          true
 #define ENABLE_ALARMS       true
 #define ENABLE_WEB          true
-#define ENABLE_FM_RADIO     false  // Set to true now that we're using FM
+#define ENABLE_FM_RADIO     true  // Set to true now that we're using FM
 #define ENABLE_PRAM         true
 #define ENABLE_I2C_SCAN     true
 
@@ -53,36 +53,39 @@
 // *** LOCKED - DO NOT CHANGE THESE PINS ***
 
 // I2C pins (Shared by OLED and RDA5807)
-#define I2C_SDA          21 // Green
+#define I2C_SDA          17 // Green
 #define I2C_SCL          18 // Yellow
 
-// uint8_t rdaAddresses[] = {0x10, 0x11, 0};7
-
-
-
 // I2S Audio pins (for Internet Radio via MAX98357A)
-#define I2S_LRC          7   // Word Select (shared for both amps)
-#define I2S_BCLK         8  // Bit Clock (shared for both amps)
-#define I2S_DOUT         16  // Data Out LEFT channel (to first MAX98357A)
-/*
-Pin 40 Currently: 
+#define I2S_LRC          7    // (Green)  To pin 5 ---Word Select (shared for both amps)
+#define I2S_BCLK         8    // (Yellow) To Pin 2 --- Bit Clock (shared for both amps)
+#define I2S_DOUT         16   // (White)   To Pin 12 --- Data Out LEFT channel (to first MAX98357A)
 
-Yellow Black: Screen SCK -> Move to 13
-White: T_CLK
+#define FM_RESET_PIN     42  // White Si4735 reset pin
+#define FM_RCLK_PIN      40  // Blue - 32,768 Hz cloced use by the Si4735 
+// #define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
 
-Pin 13 Currently:
+/* 
 
-Green: T_CS -> move to
+The Si4735 Pinouts -> MAX98357A
+
+Pin 1 - DOUT - Yellow
+Pin 2 - DFS  - Green
+Pin 3 - DCLK - White
 
 */
+
+
+
+
 /* NEW  - https://forum.arduino.cc/t/esp32-touchscreen-tft_espi-ili9341/607951/3 */
 // Watch this Video which talks exactly about our setup: https://www.youtube.com/watch?v=_0tgx8tezXU
 
 // #define TOUCH_IRQ 	n/a
 #define TOUCH_DO 	13
-#define TOUCH_DIN 11
+#define TOUCH_DIN 	11
 #define TOUCH_CS 	46 // 33 
-#define TOUCH_CLK 12
+#define TOUCH_CLK 	12
 
 #define TFT_MISO	13
 #define TFT_LED		47
@@ -97,8 +100,6 @@ Green: T_CS -> move to
 // Control pins
 #define VOL_PIN          1   // ADC for volume potentiometer
 #define LED_PIN          48  // RGB LED (built-in on DevKitC)
-#define BRIGHTNESS_PIN   38  // 42 Brightness button
-#define NEXT_STATION_PIN 39 // 42  // Next station button
 
 // Switch pin for TS5A3159
 // The Mode_Switch_Pin is connected to the IN Pin. 
@@ -108,22 +109,20 @@ Green: T_CS -> move to
 #define ENABLE_TOUCHSCREEN     true
 #define INIT_TOUCHSCREEN_FIRST false
 
-#define MODE_SWITCH_PIN  17  // 42 Switch between Internet/FM radio
+#define MODE_SWITCH_PIN  21  // 42 Switch between Internet/FM radio
 
-// FM Radio pins (only used if ENABLE_FM_RADIO is true)
-#if ENABLE_FM_RADIO
-  #define FM_RESET_PIN     42  // Si4735 reset pin
-  #define AUDIO_SWITCH_PIN 41  // Audio source switching (HIGH=FM, LOW=Internet)
-#endif
+// #define AUDIO_SWITCH_PIN 41  // Same as Mode Switch PIN I think?
 
 
 
 // Button Pins for alarm clock interface
-#define BTN_UP      3
-#define BTN_DOWN    6
-#define BTN_SELECT  5
-#define BTN_SNOOZE  6
-#define BTN_SETUP   14  // Setup/Settings button
+#define BTN_UP            3
+#define BTN_DOWN          6
+#define BTN_SELECT        5
+#define BTN_SNOOZE        6
+#define BTN_SETUP         14  // Setup/Settings button
+#define NEXT_STATION_PIN  45 // 42  // Next station button
+#define BRIGHTNESS_PIN    38  // 42 Brightness button
 
 // *** END OF LOCKED PINS ***
 
