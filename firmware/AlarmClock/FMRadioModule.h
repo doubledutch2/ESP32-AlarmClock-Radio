@@ -1,14 +1,15 @@
 #ifndef FM_RADIO_MODULE_H
 #define FM_RADIO_MODULE_H
 
-#include <RDA5807.h>
+#include <SI4735.h>
+#include "Config.h"
 
 class FMRadioModule {
 private:
-    RDA5807 radio;
+    SI4735 radio;
     bool isInitialized;
-    float currentFrequency=0;
-    uint8_t rdaAddresses[2] = {0, 0};
+    float currentFrequency;
+    uint8_t currentVolume;
 
 public:
     FMRadioModule();
@@ -20,6 +21,13 @@ public:
     void seekDown();
     void mute(bool state);
     bool isReady();
+    
+    // Si4735 specific methods
+    void setupDigitalAudio();
+    int getRSSI();
+    bool getRdsReceived();
+    char* getRdsText();
+    void getRdsStatus();
 };
 
 #endif

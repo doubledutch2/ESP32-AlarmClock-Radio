@@ -13,6 +13,7 @@
 #include "TouchScreenModule.h"
 #include "FeatureFlags.h"
 #include <SPI.h>
+#include <driver/ledc.h>  // Add this for LEDC (RCLK generation)
 
 class HardwareSetup {
 private:
@@ -65,6 +66,7 @@ private:
     void initLED();
     void initTouchScreen();
     void doI2CScan();
+    void setupRCLK();  // NEW: Setup 32.768kHz clock for Si4735
     
     void handleVolumeControl();
     void handleBrightnessButton();

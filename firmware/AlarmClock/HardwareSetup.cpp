@@ -360,26 +360,6 @@ void HardwareSetup::doI2CScan() {
     lastRow += fontHeight;
 }
 
-void HardwareSetup::initFMRadio() {
-    if (activeFlags.enableFMRadio) {
-        Serial.println("Initializing FM Radio...");
-        Wire.begin(I2C_SDA, I2C_SCL);
-        delay(100);
-        fmRadio = new FMRadioModule();
-        if (fmRadio->begin()) {
-            Serial.println("FM Radio initialized");
-            if (display) display->drawText(10, lastRow, "FM Radio: OK", ILI9341_WHITE, 1);
-        } else {
-            Serial.println("FM Radio initialization failed!");
-            if (display) display->drawText(10, lastRow, "FM Radio: FAIL", ILI9341_RED, 1);
-        }
-    } 
-    else {
-        if (display) display->drawText(10, lastRow, "FM Radio: Disabled", ILI9341_WHITE, 1);
-    }
-    lastRow += fontHeight;
-}
-
 void HardwareSetup::initLED() {
     if (activeFlags.enableLED) {
         if (display) display->drawText(10, lastRow, "Init LED: OK", ILI9341_WHITE, 1);
@@ -484,4 +464,56 @@ void HardwareSetup::initTouchScreen() {
         touchScreen = nullptr;
     }
     lastRow += fontHeight;
+}
+void HardwareSetup::initFMRadio() {
+    if (activeFlags.enableFMRadio) {
+        Serial.println("Initializing FM Radio...");
+        
+        // Setup 32.768kHz RCLK for Si4735 using LEDC
+        setupRCLK();
+        
+        Wire.begin(I2C_SDA, I2C_SCL);
+        delay(100);
+        
+        fmRadio = new FMRadioModule();
+        if (fmRadio->begin()) {
+            Serial.println("FM Radio initialized with digital audio");
+            if (display) display->drawText(10, lastRow, "FM Radio: OK", ILI9341_WHITE, 1);
+        } else {
+            Serial.println("FM Radio initialization failed!");
+            if (display) display->drawText(10, lastRow, "FM Radio: FAIL", ILI9341_RED, 1);
+        }
+    } 
+    else {
+        if (display) display->drawText(10, lastRow, "FM Radio: Disabled", ILI9341_WHITE, 1);
+    }
+    lastRow += fontHeight;
+}
+
+void HardwareSetup::setupRCLK() {
+    Serial.println("Setting up 32.768kHz RCLK for Si4735...");
+    
+    // Configure LEDC timer for 32.768kHz output
+    ledc_timer_config_t ledc_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_RESOLUTION,
+        .timer_num = LEDC_TIMER_NUM,
+        .freq_hz = RCLK_FREQUENCY,
+        .clk_cfg = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&ledc_timer);
+    
+    // Configure LEDC channel
+    ledc_channel_config_t ledc_channel = {
+        .gpio_num = FM_RCLK_PIN,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_NUM,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = LEDC_TIMER_NUM,
+        .duty = LEDC_DUTY_CYCLE,
+        .hpoint = 0
+    };
+    ledc_channel_config(&ledc_channel);
+    
+    Serial.println("RCLK 32.768kHz output configured on GPIO " + String(FM_RCLK_PIN));
 }

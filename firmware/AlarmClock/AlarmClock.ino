@@ -1,6 +1,6 @@
 /*
- * ESP32 Alarm Clock Radio - Modular Main File
- * Simplified main file - business logic is in separate modules
+ * ESP32 Alarm Clock Radio - With Audio Source Switching
+ * Supports both FM Radio (Si4735) and Internet Radio streaming
  */
 
 #include "Config.h"
@@ -9,11 +9,13 @@
 #include "MenuSystem.h"
 #include "AlarmController.h"
 #include "FeatureFlags.h"
+#include "AudioSwitch.h"
 
 // Module instances (managed by HardwareSetup)
 HardwareSetup* hardware = nullptr;
 MenuSystem* menu = nullptr;
 AlarmController* alarmController = nullptr;
+AudioSwitch* audioSwitch = nullptr;
 
 // State
 AlarmState alarmState;
@@ -26,6 +28,10 @@ int stationCount = 0;
 // Constants
 const unsigned long DEBOUNCE_DELAY = 200;
 const unsigned long DISPLAY_UPDATE_INTERVAL = 1000;
+const unsigned long RDS_UPDATE_INTERVAL = 500;
+
+// RDS monitoring
+unsigned long lastRdsCheck = 0;
 
 void loadStationsFromStorage() {
   if (!hardware || !hardware->getStorage()) return;
@@ -35,9 +41,9 @@ void loadStationsFromStorage() {
 
   if (hardware->getActiveFlags().enablePRAM) {
     savedCount = storage->getInternetStationCount();
-    
     Serial.printf("Loading %d stations from storage\n", savedCount);
   }
+  
   // Free old station list if it exists
   if (stationList != nullptr) {
     delete[] stationList;
@@ -64,9 +70,6 @@ void loadStationsFromStorage() {
     
     stationList[4].name = "NPO Radio 1";
     stationList[4].url = "https://icecast.omroep.nl/radio1-bb-mp3";
-
-    
-
     
     // Save defaults to storage
     for (int i = 0; i < stationCount; i++) {
@@ -87,7 +90,6 @@ void loadStationsFromStorage() {
       }
     }
   }
-
 }
 
 void setup() {
@@ -96,19 +98,34 @@ void setup() {
   
   Serial.println("\n====================================");
   Serial.println("   ESP32 Alarm Clock Radio");
+  Serial.println("   with Audio Source Switching");
   Serial.println("====================================\n");
   
   // Initialize all hardware
-  Serial.println("Before hardware setup");
+  Serial.println("Initializing hardware...");
   hardware = new HardwareSetup();
   if (!hardware->begin()) {
     Serial.println("Hardware initialization failed!");
     while(1) delay(1000);
   }
 
-  // if (ENABLE_PRAM) {
+  // Initialize audio source switching
+  Serial.println("Initializing audio switch...");
+  audioSwitch = new AudioSwitch();
+  audioSwitch->begin();
+  
+  // Load audio mode preference
+  if (hardware->getStorage()) {
+    bool useFMRadio = hardware->getStorage()->loadAudioMode(false);
+    if (useFMRadio) {
+      audioSwitch->setSource(SOURCE_FM_RADIO);
+    } else {
+      audioSwitch->setSource(SOURCE_INTERNET_RADIO);
+    }
+  }
+
   if (hardware->getActiveFlags().enablePRAM) {
-    Serial.println("Going to initialize PSRAM");
+    Serial.println("Initializing PSRAM...");
     if (psramInit()) {
       Serial.print("PSRAM initialized. Total PSRAM size: ");
       Serial.println(ESP.getPsramSize());
@@ -118,17 +135,12 @@ void setup() {
       Serial.println("PSRAM not found or not initialized.");
     }
     
-    // Serial.printf("LittleFS used: %d bytes\n", LittleFS.usedBytes());
     Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
     Serial.printf("Total heap: %d bytes\n", ESP.getHeapSize());
     Serial.println();
   }
-  else {
-    Serial.println("Not using PSRAM");
-  }
 
-
-  // Load stations from storage (must be done AFTER hardware init)
+  // Load stations from storage
   loadStationsFromStorage();
 
   // Initialize menu system
@@ -138,10 +150,10 @@ void setup() {
     hardware->getFMRadio(),
     hardware->getAudio(),
     hardware->getStorage(),
-    hardware->getTouchScreen()  // NEW: Pass touchscreen
+    hardware->getTouchScreen()
   );
   
-  // Initialize alarm controller with all required parameters
+  // Initialize alarm controller
   if (hardware->getActiveFlags().enableAlarms) {
     Serial.println("Creating AlarmController...");
     alarmController = new AlarmController(
@@ -151,7 +163,6 @@ void setup() {
       hardware->getStorage()
     );
   
-    // CRITICAL: Load alarms from storage
     Serial.println("Loading alarms from storage...");
     alarmController->begin();
     Serial.println("Alarms loaded.");
@@ -183,13 +194,13 @@ void setup() {
         hardware->getFMRadio()->setFrequency(freq);
       }
       
-      // Load timezone settings (for future use - requires restart to apply)
       long gmtOffset, dstOffset;
       hardware->getStorage()->loadTimezone(gmtOffset, dstOffset);
       Serial.printf("Timezone loaded: GMT offset %ld seconds, DST offset %d seconds\n", 
                     gmtOffset, dstOffset);
     }
   }
+  
   // Connect states to menu system
   if (hardware->getActiveFlags().enableAlarms) {
     menu->setAlarmState(&alarmState);
@@ -197,17 +208,14 @@ void setup() {
   menu->setUIState(&uiState);
   menu->setStationList(stationList, stationCount);
   
-  // Pass storage and time module to web server
+  // Pass station list to web server
   if (hardware->getWebServer()) {
     Serial.println("Configuring web server with station list...");
     hardware->getWebServer()->setStationList(stationList, stationCount);
-    
-    // CRITICAL: Pass AlarmController reference so web can reload alarms
     hardware->getWebServer()->setAlarmController(alarmController);
     
-    // Setup web callback
     hardware->getWebServer()->setPlayCallback([](const char* name, const char* url) {
-      if (hardware->getAudio()) {
+      if (hardware->getAudio() && audioSwitch->isInternetRadioActive()) {
         hardware->getAudio()->playCustom(name, url);
       }
     });
@@ -221,7 +229,7 @@ void setup() {
   }
 
   if (hardware->getDisplay()) {
-    Serial.println("Clearing display to remove old formatting...");
+    Serial.println("Clearing display...");
     hardware->getDisplay()->clear();
     delay(100);
     hardware->getDisplay()->drawClockFace();
@@ -237,7 +245,25 @@ void setup() {
     Serial.printf("  http://%s.local/alarms - Alarm Management\n", MDNS_NAME);
   }
   
-  Serial.println("\n*** System Ready - Monitoring for alarms ***\n");
+  Serial.println("\n*** System Ready - Audio Source: " + 
+                String(audioSwitch->isFMRadioActive() ? "FM RADIO" : "INTERNET RADIO") + " ***\n");
+}
+
+void updateRDS() {
+  if (!hardware->getFMRadio() || !audioSwitch->isFMRadioActive()) return;
+  
+  unsigned long now = millis();
+  if (now - lastRdsCheck < RDS_UPDATE_INTERVAL) return;
+  
+  lastRdsCheck = now;
+  
+  FMRadioModule* fm = hardware->getFMRadio();
+  if (fm->getRdsReceived()) {
+    char* rdsText = fm->getRdsText();
+    if (rdsText && strlen(rdsText) > 0) {
+      Serial.printf("\r[RDS]: %-64s", rdsText);
+    }
+  }
 }
 
 void loop() {
@@ -249,17 +275,22 @@ void loop() {
   // Update all hardware
   hardware->loop();
   
-  // IMPORTANT: Update ezTime events (handles DST changes)
+  // Update ezTime events
   if (hardware->getTimeModule()) {
     hardware->getTimeModule()->loop();
   }
   
-  // Handle touchscreen input (only if touchscreen is available)
+  // Update RDS if in FM mode
+  if (audioSwitch && audioSwitch->isFMRadioActive()) {
+    updateRDS();
+  }
+  
+  // Handle touchscreen input
   if (hardware->getTouchScreen()) {
     menu->handleTouch();
   }
   
-  // Read buttons (all active LOW with INPUT_PULLUP)
+  // Read buttons
   if (hardware->getActiveFlags().enableButtons) {
     bool btnUp = !digitalRead(BTN_UP);
     bool btnDown = !digitalRead(BTN_DOWN);
@@ -267,7 +298,6 @@ void loop() {
     bool btnSnooze = !digitalRead(BTN_SNOOZE);
     bool btnSetup = !digitalRead(BTN_SETUP);
     
-    // Handle buttons (with debouncing in menu system)
     if (now - uiState.lastButtonPress >= DEBOUNCE_DELAY) {
       if (btnUp || btnDown || btnSelect || btnSnooze || btnSetup) {
         menu->handleButtons(btnUp, btnDown, btnSelect, btnSnooze, btnSetup);
@@ -278,12 +308,8 @@ void loop() {
 
   // Update display
   if (now - lastUpdate >= DISPLAY_UPDATE_INTERVAL || uiState.needsRedraw) {
-    // Let MenuSystem handle all the display updates
     menu->updateDisplay();
     menu->setWiFiStatus(hardware->getWiFi() && hardware->getWiFi()->isConnected());
-    
-    // DON'T call updateDate or updateTime directly here!
-    // The menu->updateDisplay() handles everything
     
     lastUpdate = now;
     uiState.needsRedraw = false;

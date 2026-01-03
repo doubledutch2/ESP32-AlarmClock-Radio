@@ -153,4 +153,23 @@ Pin 3 - DCLK - White
 #define MAX_STATIONS     50
 #define MAX_ALARMS       10
 
+// Add these definitions to your existing Config.h file
+// Place them in the appropriate sections
+
+// ===== Si4735 FM Radio Configuration =====
+#define SI473X_ANALOG_DIGITAL_AUDIO 1  // Digital audio output mode
+#define XOSCEN_RCLK 1                  // Use external RCLK
+// #define FM_CURRENT_MODE FM_CURRENT_MODE_NORMAL
+
+// Si4735 Digital Audio Settings
+#define SI4735_DIGITAL_AUDIO_SAMPLE_RATE 44100  // Match I2S sample rate
+#define SI4735_DIGITAL_OUTPUT_FORMAT 0          // I2S compatible format
+
+// ===== RCLK Generation Settings =====
+#define RCLK_FREQUENCY 32768  // 32.768 kHz for Si4735
+#define LEDC_TIMER_RESOLUTION LEDC_TIMER_8_BIT
+#define LEDC_TIMER_NUM LEDC_TIMER_0
+#define LEDC_CHANNEL_NUM LEDC_CHANNEL_0
+#define LEDC_DUTY_CYCLE 128  // 50% duty cycle for 8-bit resolution
+
 #endif
